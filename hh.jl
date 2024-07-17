@@ -1,6 +1,7 @@
 using Parameters, Plots
 using BifurcationKit
 using DifferentialEquations
+using ConstructionBase
 const BK = BifurcationKit
 
 ## Set up problem
@@ -66,7 +67,7 @@ sol = solve(prob_de, Rodas5())
 plot(sol.t, sol[4,:])
 display(title!("Default Parameters: gk 36.0"))
 
-for gk_p in [23, 24]
+for gk_p in [24., 23.]
 	global params = (am1=0.1, am2=50.0, am3=10.0, bm1=4.0, bm2=75.0, bm3=18.0, ah1=0.07, ah2=75.0, ah3=20.0,
 	bh1=45.0, bh2=10.0, gna=120.0, Ena=40.0, an1=0.01, an2=65.0, an3=10.0, bn1=0.125, bn2=75.0,
 	bn3=80.0, gk=gk_p, Ek=-87.0, gl=0.3, El=-64.387, Cm=1.0)
@@ -76,3 +77,41 @@ for gk_p in [23, 24]
 	plot(sol.t, sol[4,:])
 	display(title!("gk: $gk_p"))
 end
+
+## Continuation of limit cycle
+# Simulation a little bit more from updated ICs
+prob_de = ODEProblem(hh!, sol[end], (0,25.), params, reltol=1e-8, abstol=1e-8)
+sol_pulse = solve(prob_de, Rodas5())
+plot(sol_pulse.t, sol_pulse[4,:])
+display(title!("One pulse"))
+
+# New problem because parameters changed, also change 
+# continuation options
+opts_br = ContinuationPar(p_min = 0.2, p_max = 0.5,
+# parameters to have a smooth continuation curve
+dsmin = 0.001, dsmax = 0.05,
+)
+prob = BifurcationProblem(hh!, sol_pulse[end], params, (@lens _.gl);
+	record_from_solution = (x, p) -> (V = x[4]),)
+
+argspo = (record_from_solution = (x, p) -> begin
+		xtt = get_periodic_orbit(p.prob, x, p.p)
+		return (max = maximum(xtt[4,:]),
+				min = minimum(xtt[4,:]),
+				period = getperiod(p.prob, x, p.p))
+	end,
+	plot_solution = (x, p; k...) -> begin
+		xtt = get_periodic_orbit(p.prob, x, p.p)
+		plot!(xtt.t, xtt[4,:]; label = "V", k...)
+	end)
+
+probtrap, ci = BK.generate_ci_problem(PeriodicOrbitTrapProblem(M = 150),
+prob, sol_pulse, 25.)
+
+opts_po_cont = setproperties(opts_br, max_steps = 50, tol_stability = 1e-8)
+brpo_fold = continuation(probtrap, ci, PALC(), opts_po_cont;
+	verbosity = 3, plot = true,
+	argspo...
+	)
+
+scene = plot(brpo_fold)

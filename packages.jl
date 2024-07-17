@@ -4,5 +4,6 @@ Pkg.add([
     "DifferentialEquations",
     "Parameters",
     "Plots",
+    "ConstructionBase"
     ]
 )
