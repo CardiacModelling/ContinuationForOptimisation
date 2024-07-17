@@ -6,7 +6,7 @@ const BK = BifurcationKit
 ## Set up problem
 
 # vector field
-function hh!(dz, z, p)
+function hh!(dz, z, p, t=0)
 	@unpack am1, am2, am3, bm1, bm2, bm3, ah1, ah2, ah3,
     bh1, bh2, gna, Ena, an1, an2, an3, bn1, bn2,
     bn3, gk, Ek, gl, El, Cm = p
@@ -51,5 +51,27 @@ dsmin = 0.001, dsmax = 0.05,
 # continuation of equilibria
 br = continuation(prob, PALC(tangent=Bordered()), opts_br; normC = norminf, bothside=true)
 
-plot(br, plotfold=false, markersize=3, legend=:topleft) # Plot roughly matches MatCont, this doesn't detection all of the special points, although there may be a setting for it
+# Plot roughly matches MatCont, this doesn't detection all of the special points, although there may be a setting for it
+display(plot(br, plotfold=false, markersize=3, legend=:topleft))
 
+
+## Plot solution either side of hopf bifurcation
+
+# initial condition - point near the equilibria where the hopf bifurcation was detected
+z0 = [0.07301116, 0.4970336, 0.34507967, -72.22502]
+
+prob_de = ODEProblem(hh!, z0, (0,200.), params, reltol=1e-8, abstol=1e-8)
+sol = solve(prob_de, Rodas5())
+plot(sol.t, sol[4,:])
+display(title!("Default Parameters: gk 36.0"))
+
+for gk_p in [23, 24]
+	global params = (am1=0.1, am2=50.0, am3=10.0, bm1=4.0, bm2=75.0, bm3=18.0, ah1=0.07, ah2=75.0, ah3=20.0,
+	bh1=45.0, bh2=10.0, gna=120.0, Ena=40.0, an1=0.01, an2=65.0, an3=10.0, bn1=0.125, bn2=75.0,
+	bn3=80.0, gk=gk_p, Ek=-87.0, gl=0.3, El=-64.387, Cm=1.0)
+
+	global prob_de = ODEProblem(hh!, z0, (0,200.), params, reltol=1e-8, abstol=1e-8)
+	global sol = solve(prob_de, Rodas5())
+	plot(sol.t, sol[4,:])
+	display(title!("gk: $gk_p"))
+end
