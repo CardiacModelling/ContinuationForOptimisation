@@ -1,6 +1,7 @@
 using ModelingToolkit
 using ModelingToolkit: t_nounits as t, D_nounits as D
 using Plots, DifferentialEquations, BifurcationKit
+using LinearAlgebra
 
 @mtkmodel NOBLE begin
     @parameters begin
@@ -182,22 +183,87 @@ params = [
 prob = ODEProblem(noble,
 ic,
 (0.0, 20.0),
-params, jac = true)
+params, jac = true, abstol=1e-12, reltol=1e-10, alg=Rodas4P())
 
 odefun = prob.f
 F = (u,p) -> odefun(u,p,0)
 J = (u,p) -> odefun.jac(u,p,0)
 
 indexof(sym, syms) = findfirst(isequal(sym),syms)
-id_gnab = indexof(noble.Na_back_curr₊g_Nab, parameters(noble))
-id_V = indexof(noble.mem₊V, unknowns(noble))
+indexofvar(sym) = indexof(sym, unknowns(noble))
+indexofparam(sym) = indexof(sym, parameters(noble))
+id_gnab = indexofparam(noble.Na_back_curr₊g_Nab)
+id_V = indexofvar(noble.mem₊V)
+id_conc = indexofvar.([noble.intra_Na_conc₊Nai,
+noble.intra_Ca_conc₊Cai,
+noble.intra_Ca_conc₊Ca_up,
+noble.intra_Ca_conc₊Ca_rel,
+noble.intra_Ca_conc₊p,
+noble.ext_K_conc₊Kc,
+noble.intra_K_conc₊Ki,])
 
 sol = solve(prob)
 plot(sol, vars = [noble.mem₊V])
 
+
+prob = remake(prob; tspan=(0, 1000.))
+sol = solve(prob)
+concs = (sol[id_conc,:]./sol[id_conc,1])
+n = map(x -> norm(x), eachcol(concs))
+plot(sol.t, n)
+display(title!("Norm of conc for long run time"))
+
+u0 = sol[end]
+prob = remake(prob; tspan=(0, 10.), u0=u0)
+sol = solve(prob)
+concs = (sol[id_conc,:]./sol[id_conc,1])
+plot(sol.t, concs')
+display(title!("Normalised concentrations at limit cycle"))
+
+# Period looks to be around 1.5
+u0_pulse = sol[end]
+prob = remake(prob; tspan=(0, 1.5), u0=u0)
+sol_pulse = solve(prob)
+plot(sol_pulse, vars = [noble.mem₊V])
+display(title!("Voltage for 1 pulse"))
+
 bp = BifurcationProblem(F, prob.u0, prob.p, (@lens _[id_gnab]); J=J,
     record_from_solution = (x,p) -> V=x[id_V])
 
-opts_br = ContinuationPar(p_min = 0.05, p_max = 0.4)
+argspo = (record_from_solution = (x, p) -> begin
+		xtt = get_periodic_orbit(p.prob, x, p.p)
+		return (max = maximum(xtt[id_V,:]),
+				min = minimum(xtt[id_V,:]),
+				period = getperiod(p.prob, x, p.p))
+	end,
+	plot_solution = (x, p; k...) -> begin
+		xtt = get_periodic_orbit(p.prob, x, p.p)
+		plot!(xtt.t, xtt[id_V,:]; label = "V", k...)
+	end)
 
-br = continuation(bp, PALC(tangent = Bordered()), opts_br; normC = norminf)
+# probtrap, ci = BifurcationKit.generate_ci_problem(PeriodicOrbitTrapProblem(M = 150),
+# bp, sol_pulse, 1.5)
+
+# opts_br = ContinuationPar(p_min = 0.05, p_max = 0.4, max_steps = 50, tol_stability = 1e-8)
+# brpo_fold = continuation(probtrap, ci, PALC(), opts_br;
+# 	verbosity = 3, plot = true,
+# 	argspo...
+# )
+
+probsh, cish = BifurcationKit.generate_ci_problem(ShootingProblem(M = 150),
+bp, prob, sol_pulse, 1.5; alg=Rodas4P(), abstol=1e-12, reltol=1e-10)
+
+opts_br = ContinuationPar(p_min = 0.05, p_max = 0.4, max_steps = 50, tol_stability = 1e-8)
+brpo_fold = continuation(probsh, cish, PALC(), opts_br;
+	verbosity = 3, plot = true,
+	argspo...
+)
+
+# probcoll, cicoll = BifurcationKit.generate_ci_problem(PeriodicOrbitOCollProblem(30, 4),
+# bp, sol_pulse, 1.5)
+
+# opts_br = ContinuationPar(p_min = 0.05, p_max = 0.4, max_steps = 50, tol_stability = 1e-8)
+# brpo_fold = continuation(probcoll, cicoll, PALC(), opts_br;
+# 	verbosity = 3, plot = true,
+# 	argspo...
+# )
