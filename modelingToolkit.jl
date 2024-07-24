@@ -41,26 +41,26 @@ odefun = odeprob.f
 F = (u,p) -> odefun(u,p,0)
 J = (u,p) -> odefun.jac(u,p,0)
 
-id_E0 = indexof(NMmodel.E0, parameters(NMmodel))
+#id_E0 = indexof(NMmodel.E0, parameters(NMmodel))
+id_E0 = 7
 par_tm = [NMmodel.U0 => 0.3, NMmodel.τ => 0.013, NMmodel.J => 3.07, NMmodel.E0 => -2.0, NMmodel.τD => 0.200, NMmodel.τF => 1.5, NMmodel.τS => 0.007, NMmodel.α => 1.5]
 p = ModelingToolkit.varmap_to_vars(par_tm, parameters(NMmodel))
+u = ModelingToolkit.varmap_to_vars([NMmodel.E => 0.238616, NMmodel.x => 0.982747, NMmodel.u => 0.367876], unknowns(NMmodel))
 # we collect the differentials together in a problem
-prob = BifurcationProblem(F, odeprob.u0, p, (@lens _[id_E0]); J = J,
+
+prob = BifurcationProblem(F, u, odeprob.p[1], (@lens _[id_E0]); J = J,
     record_from_solution = (x, p) -> (E = x[1], x = x[2], u = x[3]))
 
 # continuation options
 opts_br = ContinuationPar(p_min = -10.0, p_max = -0.9,
-	# parameters to have a smooth result
-	ds = 0.04, dsmax = 0.05,
-	# this is to detect bifurcation points precisely with bisection
-	detect_bifurcation = 3,
-	# Optional: bisection options for locating bifurcations
-	n_inversion = 8, max_bisection_steps = 25, nev = 3)
+    # parameters to have a smooth result
+    ds = 0.04, dsmax = 0.05,
+    # this is to detect bifurcation points precisely with bisection
+    detect_bifurcation = 3,
+    # Optional: bisection options for locating bifurcations
+    n_inversion = 8, max_bisection_steps = 25, nev = 3)
 
 # continuation of equilibria
 br = continuation(prob, PALC(tangent = Bordered()), opts_br; normC = norminf)
 
-scene = plot(br, plotfold=false, markersize=3, legend=:topleft)
-# Plot 9 is the correct one, plot 10 could be wrong because:
-# 1. The parameters or initial conditions are in the wrong order
-# 2. The output variables in record from solution are wrong
+display(plot(br, plotfold=false, markersize=3, legend=:topleft))
