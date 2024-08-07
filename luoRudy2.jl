@@ -12,10 +12,24 @@ function I_st(t)
     end
 end
 
+function pow(a, b)
+    return a^b
+end
+
+function sqr(a)
+    return a^2
+end
+
+function ln(a)
+    return log(a)
+end
+
+
+
 function LR!(du, u, p, t)
     @unpack Am, V_myo, V_JSR, V_NSR, R, T, F, Cm, g_Na, g_Nab, g_Cab, g_K1_max, g_Kp, g_K_max, Nao, Cao, Ko, gamma_Nai, gamma_Nao, gamma_Ki, gamma_Ko, P_Ca, 
     P_Na, P_K, gamma_Cai, gamma_Cao, Km_Ca, PR_NaK, K_mpCa, I_pCa, I_NaK, K_mNai, K_mKo, P_ns_Ca, K_m_ns_Ca, K_NaCa, K_mNa, K_mCa, K_sat, eta, G_rel_max, 
-    tau_on, tau_off, tau_tr, K_mrel, K_mup, I_up, Ca_NSR_max, delta_Ca_ith = p
+    tau_on, tau_off, tau_tr, K_mrel, K_mup, I_up, Ca_NSR_max, delta_Ca_ith, delta_Ca_i2, t_CICR = p
     m, h, j, d, f, X, V, Nai, Cai, Ca_JSR, Ca_NSR, Ki = u
 
     IStimC = I_st(t)
@@ -23,8 +37,8 @@ function LR!(du, u, p, t)
     # Fast sodium
     alpha_m = 0.32*(V+47.13)/(1.0-exp(-0.1*(V+47.13)))
     beta_m = 0.08*exp(-V/11.0)
-    i_Na = g_Na*pow(m, 3.0)*h*j*(V-E_Na)
     E_Na = R*T/F*ln(Nao/Nai)
+    i_Na = g_Na*pow(m, 3.0)*h*j*(V-E_Na)
     if V < -40.0
         alpha_h = 0.135*exp((80.0+V)/-6.8)
         beta_h = 3.56*exp(0.079*V)+310000.0*exp(0.35*V)
@@ -38,43 +52,41 @@ function LR!(du, u, p, t)
     end
 
     # L-type calcium
-    i_CaCa = d*f*f_Ca*I_CaCa
-    i_CaNa = d*f*f_Ca*I_CaNa
-    i_CaK = d*f*f_Ca*I_CaK
+    f_Ca = 1.0/(1.0+sqr(Cai/Km_Ca))
     I_CaCa = P_Ca*sqr(2.0)*V*sqr(F)/(R*T)*(gamma_Cai*Cai*exp(2.0*V*F/(R*T))-gamma_Cao*Cao)/(exp(2.0*V*F/(R*T))-1.0)
     I_CaNa = P_Na*sqr(1.0)*V*sqr(F)/(R*T)*(gamma_Nai*Nai*exp(1.0*V*F/(R*T))-gamma_Nao*Nao)/(exp(1.0*V*F/(R*T))-1.0)
     I_CaK = P_K*sqr(1.0)*V*sqr(F)/(R*T)*(gamma_Ki*Ki*exp(1.0*V*F/(R*T))-gamma_Ko*Ko)/(exp(1.0*V*F/(R*T))-1.0)
+    i_CaCa = d*f*f_Ca*I_CaCa
+    i_CaNa = d*f*f_Ca*I_CaNa
+    i_CaK = d*f*f_Ca*I_CaK
     i_Ca_L = i_CaCa+i_CaK+i_CaNa
 
-    alpha_d = d_infinity/tau_d
     d_infinity = 1.0/(1.0+exp(-(V+10.0)/6.24))
     tau_d = d_infinity*(1.0-exp(-(V+10.0)/6.24))/(0.035*(V+10.0))
+    alpha_d = d_infinity/tau_d
     beta_d = (1.0-d_infinity)/tau_d
     
-    alpha_f = f_infinity/tau_f
     f_infinity = 1.0/(1.0+exp((V+35.06)/8.6))+0.6/(1.0+exp((50.0-V)/20.0))
     tau_f = 1.0/(0.0197*exp(-sqr(0.0337*(V+10.0)))+0.02)
+    alpha_f = f_infinity/tau_f
     beta_f = (1.0-f_infinity)/tau_f
 
-    f_Ca = 1.0/(1.0+sqr(Cai/Km_Ca))
-
     # Time dependent potassium
+    Xi = 1.0/(1.0+exp((V-56.26)/32.1))
     g_K = g_K_max*sqrt(Ko/5.4)
     E_K = R*T/F*ln((Ko+PR_NaK*Nao)/(Ki+PR_NaK*Nai))
     i_K = g_K*sqr(X)*Xi*(V-E_K)
 
     alpha_X = 0.0000719*(V+30.0)/(1.0-exp(-0.148*(V+30.0)))
     beta_X = 0.000131*(V+30.0)/(-1.0+exp(0.0687*(V+30.0)))
-    Xi = 1.0/(1.0+exp((V-56.26)/32.1))
 
     # Time independent potassium
-    g_K1 = g_K1_max*sqrt(Ko/5.4)
     E_K1 = R*T/F*ln(Ko/Ki)
-    i_K1 = g_K1*K1_infinity*(V-E_K1)
-
     alpha_K1 = 1.02/(1.0+exp(0.2385*(V-E_K1-59.215)))
     beta_K1 = (0.49124*exp(0.08032*(V+5.476-E_K1))+exp(0.06175*(V-(E_K1+594.31))))/(1.0+exp(-0.5143*(V-E_K1+4.753)))
     K1_infinity = alpha_K1/(alpha_K1+beta_K1)
+    g_K1 = g_K1_max*sqrt(Ko/5.4)
+    i_K1 = g_K1*K1_infinity*(V-E_K1)
 
     # Plateau potassium
     E_Kp = E_K1
@@ -93,35 +105,34 @@ function LR!(du, u, p, t)
     i_Ca_b = g_Cab*(V-E_CaN)
 
     # Sodium potassium pump
-    f_NaK = 1.0/(1.0+0.1245*exp(-0.1*V*F/(R*T))+0.0365*sigma*exp(-V*F/(R*T)))
     sigma = 1.0/7.0*(exp(Nao/67.3)-1.0)
+    f_NaK = 1.0/(1.0+0.1245*exp(-0.1*V*F/(R*T))+0.0365*sigma*exp(-V*F/(R*T)))
     i_NaK = I_NaK*f_NaK*1.0/(1.0+pow(K_mNai/Nai, 1.5))*Ko/(Ko+K_mKo)
 
     # Non-specific calcium activated current
     EnsCa = R*T/F*ln((Ko+Nao)/(Ki+Nai))
     Vns = V-EnsCa
+    I_ns_Na = P_ns_Ca*sqr(1.0)*Vns*sqr(F)/(R*T)*(gamma_Nai*Nai*exp(1.0*Vns*F/(R*T))-gamma_Nao*Nao)/(exp(1.0*Vns*F/(R*T))-1.0)
+    I_ns_K = P_ns_Ca*sqr(1.0)*Vns*sqr(F)/(R*T)*(gamma_Ki*Ki*exp(1.0*Vns*F/(R*T))-gamma_Ko*Ko)/(exp(1.0*Vns*F/(R*T))-1.0)
     i_ns_Na = I_ns_Na*1.0/(1.0+pow(K_m_ns_Ca/Cai, 3.0))
     i_ns_K = I_ns_K*1.0/(1.0+pow(K_m_ns_Ca/Cai, 3.0))
     i_ns_Ca = i_ns_Na+i_ns_K
-    I_ns_Na = P_ns_Ca*sqr(1.0)*Vns*sqr(F)/(R*T)*(gamma_Nai*Nai*exp(1.0*Vns*F/(R*T))-gamma_Nao*Nao)/(exp(1.0*Vns*F/(R*T))-1.0)
-    I_ns_K = P_ns_Ca*sqr(1.0)*Vns*sqr(F)/(R*T)*(gamma_Ki*Ki*exp(1.0*Vns*F/(R*T))-gamma_Ko*Ko)/(exp(1.0*Vns*F/(R*T))-1.0)
-
+    
     # Sodium calcium exchanger
     i_NaCa = K_NaCa*1.0/(pow(K_mNa, 3.0)+pow(Nao, 3.0))*1.0/(K_mCa+Cao)*1.0/(1.0+K_sat*exp((eta-1.0)*V*F/(R*T)))*(exp(eta*V*F/(R*T))*pow(Nai, 3.0)*Cao-exp((eta-1.0)*V*F/(R*T))*pow(Nao, 3.0)*Cai)
 
     # Calcium fluxes in the SR
-    i_rel = G_rel*(Ca_JSR-Cai)
-    G_rel = G_rel_peak*(delta_Ca_i2-delta_Ca_ith)/(K_mrel+delta_Ca_i2-delta_Ca_ith)*(1.0-exp(-t_CICR/tau_on))*exp(-t_CICR/tau_off)
-
     if delta_Ca_i2 < delta_Ca_ith
         G_rel_peak = 0.0
     else
         G_rel_peak = G_rel_max
     end
+    G_rel = G_rel_peak*(delta_Ca_i2-delta_Ca_ith)/(K_mrel+delta_Ca_i2-delta_Ca_ith)*(1.0-exp(-t_CICR/tau_on))*exp(-t_CICR/tau_off)
+    i_rel = G_rel*(Ca_JSR-Cai)
 
     i_up = I_up*Cai/(Cai+K_mup)
-    i_leak = K_leak*Ca_NSR
     K_leak = I_up/Ca_NSR_max
+    i_leak = K_leak*Ca_NSR
     i_tr = (Ca_NSR-Ca_JSR)/tau_tr
 
     du[1] = alpha_m*(1.0-m)-beta_m*m
@@ -166,8 +177,10 @@ gamma_Nai = 0.75, gamma_Nao = 0.75, gamma_Ki = 0.75, gamma_Ko = 0.75, P_Ca = 5.4
 PR_NaK = 0.01833, K_mpCa = 0.5e-3, I_pCa = 1.15e-2, I_NaK = 1.5e-2, K_mNai = 10.0, K_mKo = 1.5, P_ns_Ca = 1.75e-9, K_m_ns_Ca = 1.2e-3, K_NaCa = 20.0, K_mNa = 87.5,
 K_mCa = 1.38, K_sat = 0.1, eta = 0.35, G_rel_max = 60.0, tau_on = 2.0, tau_off = 2.0, tau_tr = 180.0, K_mrel = 0.8e-3, K_mup = 0.92e-3, I_up = 0.005, Ca_NSR_max = 15.0,
 delta_Ca_ith = 0.18e-3,
+# Missing from original cellml
+delta_Ca_i2 = 0.0, t_CICR = 0.0,
 )
 
-prob_ode = ODEProblem(LR_EOM!, u0, (0,1000), param_LR)
-sol_ode = solve(prob_ode, Tsit5());
+prob_ode = ODEProblem(LR!, u0, (0,1000), paramLR)
+sol_ode = solve(prob_ode, Rodas5());
 plot(sol_ode)
