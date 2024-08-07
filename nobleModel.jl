@@ -183,7 +183,7 @@ params = [
 prob = ODEProblem(noble,
 ic,
 (0.0, 20.0),
-params, jac = true, abstol=1e-12, reltol=1e-10, alg=Rodas4P())
+params, jac = true, abstol=1e-12, reltol=1e-10)
 
 odefun = prob.f
 F = (u,p) -> odefun(u,p,0)
@@ -202,33 +202,42 @@ noble.intra_Ca_conc₊p,
 noble.ext_K_conc₊Kc,
 noble.intra_K_conc₊Ki,])
 
-sol = solve(prob)
-plot(sol, vars = [noble.mem₊V])
+prob = ODEProblem(noble,
+ic,
+(0.0, 20.0),
+params, jac = true, abstol=1e-12, reltol=1e-10)
 
+# u0 = [4.000000000029936, 0.984798106945277, 0.0030419215815922582, 0.23957811750746785, 1.715000191715184, 1.7150001919280384, 1.9021024495476288e-13, 0.9999344230875445, 139.9999999484672, 7.999999978105971, -88.22515898028055, 7.577005683891459e-8, 0.9999999997473354, 0.9999998110930108, 0.07865332604061694, 0.780136714135236]
+# prob = remake(prob; tspan=(0, 10000.), u0=u0, abstol=1e-8, reltol=1e-8)
+# sol = solve(prob, Rodas5(), maxiters=1e7)
+# concs = (sol[id_conc,:]./sol[id_conc,1])
+# plot(sol.t, concs')
+# display(title!("Normalised concentrations at limit cycle"))
 
-prob = remake(prob; tspan=(0, 1000.))
-sol = solve(prob)
-concs = (sol[id_conc,:]./sol[id_conc,1])
-n = map(x -> norm(x), eachcol(concs))
-plot(sol.t, n)
-display(title!("Norm of conc for long run time"))
+# # Finer tolerances
+# u0 = sol[end]
+# u0 = [4.000000000042591, 0.9031638340206529, 0.003077439875321329, 0.044341521682825534, 1.715000285803888, 1.7150002860261953, 2.1039934009772405e-13, 0.9518425808388398, 139.99999994646873, 7.999999967124722, -88.14540444420523, 8.16724958815707e-8, 0.9999999996514908, 0.9999997700652196, 0.19543230783264406, 0.26217651893449884]
+# prob = remake(prob; tspan=(0, 1000.), u0=u0, abstol=1e-10, reltol=1e-10)
+# sol = solve(prob, Rodas5(), maxiters=1e7)
 
-u0 = sol[end]
-prob = remake(prob; tspan=(0, 10.), u0=u0)
-sol = solve(prob)
-concs = (sol[id_conc,:]./sol[id_conc,1])
-plot(sol.t, concs')
-display(title!("Normalised concentrations at limit cycle"))
+# # Even finer tolerances
+# #u0 = sol[end]
+# u0 = [4.000000000028319, 2.9214307822381172e-6, 0.9577252186993059, 0.0024988824515612407, 1.7150003798969489, 1.7150003801043696, 5.700177860189091e-13, 0.6123401561702725, 139.99999994287117, 7.999999956109002, -7.747745733047607, 0.8656935003862676, 0.9999999996012721, 0.00876115690854886, 0.23571365638511607, 0.05357664761760937]
+# prob = remake(prob; tspan=(0, 250.), u0=u0, abstol=1e-12, reltol=1e-10)
+# sol = solve(prob, Rodas5(), maxiters=1e7)
 
 # Period looks to be around 1.5
-u0_pulse = sol[end]
-prob = remake(prob; tspan=(0, 1.5), u0=u0)
-sol_pulse = solve(prob)
+u0_pulse = [4.000000000027627, 1.0365279142962528e-7, 0.9934044916077144, 0.02298005982405142, 1.7150004034230946, 1.715000403617643, 8.183562561637593e-13, 0.7769609400907136, 139.99999993654575, 7.999999953427887, 16.856500483179914, 0.9891436114406262, 0.9999999996801235, 0.08028167320093296, 0.16180420209061253, 0.19654025233965755]
+prob = remake(prob; tspan=(0, 1.5), u0=u0_pulse, abstol=1e-12, reltol=1e-10)
+sol_pulse = solve(prob, Rodas5())
 plot(sol_pulse, vars = [noble.mem₊V])
 display(title!("Voltage for 1 pulse"))
 
-bp = BifurcationProblem(F, prob.u0, prob.p, (@lens _[id_gnab]); J=J,
-    record_from_solution = (x,p) -> V=x[id_V])
+#bp = BifurcationProblem(F, prob.u0, prob.p, (@lens _[id_gnab]); J=J,
+#    record_from_solution = (x,p) -> V=x[id_V])
+bp = BifurcationProblem(F, prob.u0, prob.p, (@lens _[id_gnab]);
+record_from_solution = (x,p) -> V=x[id_V])
+
 
 argspo = (record_from_solution = (x, p) -> begin
 		xtt = get_periodic_orbit(p.prob, x, p.p)
@@ -241,29 +250,38 @@ argspo = (record_from_solution = (x, p) -> begin
 		plot!(xtt.t, xtt[id_V,:]; label = "V", k...)
 	end)
 
-# probtrap, ci = BifurcationKit.generate_ci_problem(PeriodicOrbitTrapProblem(M = 150),
-# bp, sol_pulse, 1.5)
+# probcoll, cicoll = BifurcationKit.generate_ci_problem(PeriodicOrbitOCollProblem(100, 5; meshadapt=true),
+# bp, sol_pulse, 1.5; optimal_period=true)
 
-# opts_br = ContinuationPar(p_min = 0.05, p_max = 0.4, max_steps = 50, tol_stability = 1e-8)
-# brpo_fold = continuation(probtrap, ci, PALC(), opts_br;
-# 	verbosity = 3, plot = true,
+# # Have we converged enough?
+# errors = [(cicoll[i:16:end-1][1]-cicoll[i:16:end-1][end])/(maximum(cicoll[i:16:end-1])-minimum(cicoll[i:16:end-1])) for i in 1:16]
+# println("Change in each varaible over 1 period as a percentage of the range")
+# show(errors)
+# println("")
+
+# # Plot residuals
+# plot(probcoll(cicoll, bp.params))
+# display(title!("Residual plot"))
+# println("Max residual is ", maximum(probcoll(cicoll, bp.params)), " at ", argmax(probcoll(cicoll, bp.params)))
+# println("Min residual is ", minimum(probcoll(cicoll, bp.params)), " at ", argmin(probcoll(cicoll, bp.params)))
+# plot(probcoll(cicoll, bp.params)[id_V:16:end-1])
+# display(title!("Voltage residual"))
+
+# opts_br = ContinuationPar(p_min = 0.05, p_max = 0.4, max_steps = 10000, 
+#     newton_options = NewtonPar(tol = 1e-6, verbose=true, linesearch=true, α=0.001))
+# brpo_fold = continuation(probcoll, cicoll, PALC(), opts_br;
+# 	verbosity = 3, plot = true, normC = norminf,
 # 	argspo...
 # )
 
-probsh, cish = BifurcationKit.generate_ci_problem(ShootingProblem(M = 150),
-bp, prob, sol_pulse, 1.5; alg=Rodas4P(), abstol=1e-12, reltol=1e-10)
 
-opts_br = ContinuationPar(p_min = 0.05, p_max = 0.4, max_steps = 50, tol_stability = 1e-8)
+probsh, cish = BifurcationKit.generate_ci_problem(ShootingProblem(M=1),
+bp, prob, sol_pulse, 1.43705; alg=Rodas5(), abstol=1e-12, reltol=1e-10)
+
+opts_br = ContinuationPar(p_min = 0.05, p_max = 0.4, max_steps = 10000, 
+    newton_options = NewtonPar(tol=1e-6, verbose=true),
+    ds=1e-11, dsmin = 1e-12, dsmax = 1e-9)
 brpo_fold = continuation(probsh, cish, PALC(), opts_br;
-	verbosity = 3, plot = true,
+	verbosity = 3, plot = true, normC = norminf,
 	argspo...
 )
-
-# probcoll, cicoll = BifurcationKit.generate_ci_problem(PeriodicOrbitOCollProblem(30, 4),
-# bp, sol_pulse, 1.5)
-
-# opts_br = ContinuationPar(p_min = 0.05, p_max = 0.4, max_steps = 50, tol_stability = 1e-8)
-# brpo_fold = continuation(probcoll, cicoll, PALC(), opts_br;
-# 	verbosity = 3, plot = true,
-# 	argspo...
-# )
