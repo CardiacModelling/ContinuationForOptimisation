@@ -1,16 +1,8 @@
-using DynamicalSystems
 using DifferentialEquations
 using Revise, Parameters, Plots
 using BifurcationKit
+using LinearAlgebra
 const BK = BifurcationKit
-
-function I_st(t)
-    if t%3000 < 2
-        return -30
-    else
-        return 0
-    end
-end
 
 function pow(a, b)
     return a^b
@@ -24,15 +16,18 @@ function ln(a)
     return log(a)
 end
 
-
-
-function LR!(du, u, p, t)
+function LR!(du, u, p, t=0.0)
     @unpack Am, V_myo, V_JSR, V_NSR, R, T, F, Cm, g_Na, g_Nab, g_Cab, g_K1_max, g_Kp, g_K_max, Nao, Cao, Ko, gamma_Nai, gamma_Nao, gamma_Ki, gamma_Ko, P_Ca, 
     P_Na, P_K, gamma_Cai, gamma_Cao, Km_Ca, PR_NaK, K_mpCa, I_pCa, I_NaK, K_mNai, K_mKo, P_ns_Ca, K_m_ns_Ca, K_NaCa, K_mNa, K_mCa, K_sat, eta, G_rel_max, 
     tau_on, tau_off, tau_tr, K_mrel, K_mup, I_up, Ca_NSR_max, delta_Ca_ith, delta_Ca_i2, t_CICR = p
-    m, h, j, d, f, X, V, Nai, Cai, Ca_JSR, Ca_NSR, Ki = u
+    cost, sint, m, h, j, d, f, X, V, Nai, Cai, Ca_JSR, Ca_NSR, Ki = u
 
-    IStimC = I_st(t)
+    ω = 2pi/pulse_period
+    x2 = cost^2 + sint^2
+    du[1] = cost - ω*sint - cost*x2
+    du[2] = sint + ω*cost - sint*x2
+
+    IStimC = I_st(cost, sint)
 
     # Fast sodium
     alpha_m = 0.32*(V+47.13)/(1.0-exp(-0.1*(V+47.13)))
@@ -135,18 +130,22 @@ function LR!(du, u, p, t)
     i_leak = K_leak*Ca_NSR
     i_tr = (Ca_NSR-Ca_JSR)/tau_tr
 
-    du[1] = alpha_m*(1.0-m)-beta_m*m
-    du[2] = alpha_h*(1.0-h)-beta_h*h
-    du[3] = alpha_j*(1.0-j)-beta_j*j
-    du[4] = alpha_d*(1.0-d)-beta_d*d
-    du[5] = alpha_f*(1.0-f)-beta_f*f
-    du[6] = alpha_X*(1.0-X)-beta_X*X
-    du[7] = (IStimC-(i_Na+i_Ca_L+i_K+i_K1+i_Kp+i_NaCa+i_p_Ca+i_Na_b+i_Ca_b+i_NaK+i_ns_Ca))/Cm
-    du[8] = -(i_Na+i_CaNa+i_Na_b+i_ns_Na+i_NaCa*3.0+i_NaK*3.0)*Am/(V_myo*F)
-    du[9] = -(i_CaCa+i_p_Ca+i_Ca_b-i_NaCa)*Am/(2.0*V_myo*F)+i_rel*V_JSR/V_myo+(i_leak-i_up)*V_NSR/V_myo
-    du[10] = -(i_rel-i_tr*V_NSR/V_JSR)
-    du[11] = -(i_leak+i_tr-i_up)
-    du[12] = -(i_CaK+i_K+i_K1+i_Kp+i_ns_K+-i_NaK*2.0)*Am/(V_myo*F)
+    du[3] = alpha_m*(1.0-m)-beta_m*m
+    du[4] = alpha_h*(1.0-h)-beta_h*h
+    du[5] = alpha_j*(1.0-j)-beta_j*j
+    du[6] = alpha_d*(1.0-d)-beta_d*d
+    du[7] = alpha_f*(1.0-f)-beta_f*f
+    du[8] = alpha_X*(1.0-X)-beta_X*X
+    du[9] = (IStimC-(i_Na+i_Ca_L+i_K+i_K1+i_Kp+i_NaCa+i_p_Ca+i_Na_b+i_Ca_b+i_NaK+i_ns_Ca))/Cm
+    du[10] = -(i_Na+i_CaNa+i_Na_b+i_ns_Na+i_NaCa*3.0+i_NaK*3.0)*Am/(V_myo*F)
+    du[11] = -(i_CaCa+i_p_Ca+i_Ca_b-i_NaCa)*Am/(2.0*V_myo*F)+i_rel*V_JSR/V_myo+(i_leak-i_up)*V_NSR/V_myo
+    du[12] = -(i_rel-i_tr*V_NSR/V_JSR)
+    du[13] = -(i_leak+i_tr-i_up)
+    du[14] = -(i_CaK+i_K+i_K1+i_Kp+i_ns_K+-i_NaK*2.0)*Am/(V_myo*F)
+end
+
+function LR_time_free!(du, u, p)
+    LR!(du, u, p, 0.0)
 end
 
 m = 0.0
@@ -181,6 +180,108 @@ delta_Ca_ith = 0.18e-3,
 delta_Ca_i2 = 0.0, t_CICR = 0.0,
 )
 
-prob_ode = ODEProblem(LR!, u0, (0,1000), paramLR)
-sol_ode = solve(prob_ode, Rodas5());
-plot(sol_ode)
+function tstops(maxt)
+    # Make sure a point inside each stimulus pulse is included in ode solve
+    t = 0.0
+    tstop = []
+    while t < maxt
+        push!(tstop, t+pulse_width/2)
+        t += pulse_period
+    end
+    return tstop
+end
+
+function I_st(t)
+    # Stimulus current using time
+    if t%pulse_period < pulse_width
+        return pulse_amplitude
+    else
+        return 0.0
+    end
+end
+
+function I_st(cost, sint)
+    # Stimulus current using cos(ωt) and sin(ωt)
+    ω = 2pi/pulse_period
+    if cost >= cos(ω*pulse_width) && 0.0 <= sint <= sin(ω*pulse_width)
+        return pulse_amplitude
+    else
+        return 0.0
+    end
+end
+
+function convergence_plot(sol, dt=1000)
+    # Plot the change in the states across each pulse
+    error = []
+    for i in dt:dt:sol.t[end]
+        push!(error, norm((sol(i)-sol(i-dt))./scaling))
+    end
+    # Plot error on a log scale
+    plot(1:length(error), error, yscale=:log10)
+    title!("Convergence plot")
+    xlabel!("Pulse count")
+    println(error)
+    display(ylabel!("Error"))
+end
+
+# The following initial conditions have been run to convergence at abstol=1e-13, reltol=1e-11
+u0 = [0.0018898062554417226
+0.9802447503382736
+0.9876401575874676
+7.31687558525049e-6
+0.9972346826295406
+0.0025193256116648756
+-83.78994249513194
+25.430317134992308
+0.0006556590517487814
+6.526242185630225
+6.524882007576133
+136.09843018354334]
+
+u0 = [1, 0, u0...]
+
+maxt = 200000.0
+pulse_width = 0.5
+pulse_period = 500.0
+pulse_amplitude = 1.0
+scaling = copy(u0)
+scaling[1:6] .= 1.0
+id_V = 9
+prob_ode = ODEProblem(LR!, u0, (0,maxt), paramLR, abstol=1e-12, reltol=1e-10)
+sol_ode = solve(prob_ode, Rodas5(), tstops = tstops(maxt), maxiters=1e7);
+convergence_plot(sol_ode, pulse_period)
+
+# u0 = sol_ode.u[end]
+prob_ode = remake(prob_ode, u0=u0, tspan=(0,pulse_period))
+sol_pulse = solve(prob_ode, Rodas5(), tstops = tstops(pulse_period), maxiters=1e7)
+plot(sol_pulse, idxs=id_V)
+title!("Single action potential")
+xlabel!("Time (ms)")
+display(ylabel!("V (mV)"))
+
+
+
+bp = BifurcationProblem(LR!, u0, paramLR, (@lens _[9]); # 9 is gNa
+record_from_solution = (x,p) -> V=x[id_V])
+
+argspo = (record_from_solution = (x, p) -> begin
+		xtt = get_periodic_orbit(p.prob, x, p.p)
+		return (max = maximum(xtt[id_V,:]),
+				min = minimum(xtt[id_V,:]),
+				period = getperiod(p.prob, x, p.p))
+	end,
+	plot_solution = (x, p; k...) -> begin
+		xtt = get_periodic_orbit(p.prob, x, p.p)
+		plot!(xtt.t, xtt[id_V,:]; label = "V", k...)
+	end)
+
+probsh, cish = BifurcationKit.generate_ci_problem(ShootingProblem(M=1),
+bp, prob_ode, sol_pulse, pulse_period; alg=Rodas5(), abstol=1e-12, reltol=1e-10)
+
+opts_br = ContinuationPar(p_min = 0.05, p_max = 0.4, max_steps = 10000, 
+    newton_options = NewtonPar(tol=1e-6, verbose=true),
+    ds=1e-11, dsmin = 1e-12, dsmax = 1e-9)
+brpo_fold = continuation(probsh, cish, PALC(), opts_br;
+	verbosity = 3, plot = true, normC = norminf,
+	argspo...
+)
