@@ -203,7 +203,7 @@ end
 function I_st(cost, sint)
     # Stimulus current using cos(ωt) and sin(ωt)
     ω = 2pi/pulse_period
-    if cost >= cos(ω*pulse_width) && 0.0 <= sint <= sin(ω*pulse_width)
+    if cost >= cos(ω*pulse_width/2)
         return pulse_amplitude
     else
         return 0.0
@@ -238,28 +238,28 @@ u0 = [0.0018898062554417226
 6.524882007576133
 136.09843018354334]
 
-u0 = [1, 0, u0...]
-
-maxt = 200000.0
+maxt = 20000.0
 pulse_width = 0.5
 pulse_period = 500.0
 pulse_amplitude = 1.0
+
+u0 = [cos(-pulse_width*2pi/pulse_period/2), sin(-pulse_width*2pi/pulse_period/2), u0...]
+
 scaling = copy(u0)
 scaling[1:6] .= 1.0
 id_V = 9
-prob_ode = ODEProblem(LR!, u0, (0,maxt), paramLR, abstol=1e-12, reltol=1e-10)
+
+prob_ode = ODEProblem(LR!, u0, (0.0,maxt), paramLR, abstol=1e-12, reltol=1e-10)
 sol_ode = solve(prob_ode, Rodas5(), tstops = tstops(maxt), maxiters=1e7);
 convergence_plot(sol_ode, pulse_period)
 
 # u0 = sol_ode.u[end]
-prob_ode = remake(prob_ode, u0=u0, tspan=(0,pulse_period))
+prob_ode = remake(prob_ode, u0=u0, tspan=(0.0,pulse_period))
 sol_pulse = solve(prob_ode, Rodas5(), tstops = tstops(pulse_period), maxiters=1e7)
 plot(sol_pulse, idxs=id_V)
 title!("Single action potential")
 xlabel!("Time (ms)")
 display(ylabel!("V (mV)"))
-
-
 
 bp = BifurcationProblem(LR!, u0, paramLR, (@lens _[9]); # 9 is gNa
 record_from_solution = (x,p) -> V=x[id_V])
