@@ -1,7 +1,7 @@
 using DifferentialEquations
 using Revise, Parameters, Plots
 using BifurcationKit
-using LinearAlgebra
+using LinearAlgebra, NaNMath
 const BK = BifurcationKit
 
 function pow(a, b)
@@ -13,7 +13,7 @@ function sqr(a)
 end
 
 function ln(a)
-    return log(a)
+    return NaNMath.log(a)
 end
 
 function LR!(du, u, p, t=0.0)
