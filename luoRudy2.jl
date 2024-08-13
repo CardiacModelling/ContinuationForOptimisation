@@ -164,7 +164,7 @@ u0 = [m, h, j, d, f, X, V, Nai, Cai, Ca_JSR, Ca_NSR, Ki]
 
 paramLR = (
 # Cell geometry
-Am = 200, V_myo = 0.68, V_JSR = 0.0048, V_NSR = 0.0552,
+Am = 200.0, V_myo = 0.68, V_JSR = 0.0048, V_NSR = 0.0552,
 # Physical constants
 R = 8.3145e3, T = 310.0, F = 96845.0,
 # Conductances and capacitance
