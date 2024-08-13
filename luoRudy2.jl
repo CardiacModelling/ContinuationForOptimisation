@@ -278,10 +278,40 @@ argspo = (record_from_solution = (x, p) -> begin
 probsh, cish = BifurcationKit.generate_ci_problem(ShootingProblem(M=1),
 bp, prob_ode, sol_pulse, pulse_period; alg=Rodas5(), abstol=1e-12, reltol=1e-10)
 
+function mycallback((x, f, J, res, iteration, itlinear, options); kwargs...)
+	# stop Newton algo if residual too large
+	println(x)
+    println(f)
+    println("------")
+	return true
+end
+
+struct CustomLS <: BK.AbstractLinearSolver end
+
+function (l::CustomLS)(J, rhs; k...)
+    J[1,:] .= 0
+    J[2,:] .= 0
+    J[end,:] .= 0
+    J[1,1] = 1
+    J[2,2] = 1
+    J[end,end] = 1
+    rhs[1] = 0
+    rhs[2] = 0
+    rhs[end] = 0
+    length(rhs)
+    x = J \ rhs
+    #x[1] = 0 # Update steps for cost and sint should always be zero
+    #x[2] = 0
+    #x[end] = 0 # Period is fixed
+	return x, true, 1 # I slapped in a learning rate but it just diverges slowly
+end
+
+ls = CustomLS()
 opts_br = ContinuationPar(p_min = 0.05, p_max = 0.4, max_steps = 10000, 
-    newton_options = NewtonPar(tol=1e-6, verbose=true),
+    newton_options = NewtonPar(tol=1e-6, verbose=true, #linsolver = ls,
+    ),
     ds=1e-11, dsmin = 1e-12, dsmax = 1e-9)
 brpo_fold = continuation(probsh, cish, PALC(), opts_br;
-	verbosity = 3, plot = true, normC = norminf,
+	verbosity = 4, plot = true, normC = norm, callback_newton = mycallback,
 	argspo...
 )
