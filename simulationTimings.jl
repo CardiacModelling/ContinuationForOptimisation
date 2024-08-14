@@ -87,24 +87,24 @@ reducedOpts = ContinuationPar(p_min = 108., p_max = 132., max_steps = 50, tol_st
 
 # How long to it take to converge for ODE small step?
 prob = remake(prob, u0 = Model.ic_conv, tspan=(0.0, 50000.0))
-sol = solve(prob, Rodas5(), maxiters=1e7)
+sol = solve(prob, Tsit5(), maxiters=1e7)
 plot(sol, idxs=slow_idx)
 xlabel!("Time (ms)")
 ylabel!("Slow variable")
 display(title!("ODE from previous converged IC (gna: 120 -> 132)"))
 # Converged for the small change after t=30,000ms
 prob = remake(prob, tspan=(0.0, 30000.0))
-@benchmark solve($prob, $Rodas5(), maxiters=1e7)
-    # BenchmarkTools.Trial: 2 samples with 1 evaluation.
-    # Range (min … max):  2.948 s …   2.983 s  ┊ GC (min … max): 0.00% … 0.00%
-    # Time  (median):     2.965 s              ┊ GC (median):    0.00%
-    # Time  (mean ± σ):   2.965 s ± 25.085 ms  ┊ GC (mean ± σ):  0.00% ± 0.00%
+@benchmark solve($prob, $Tsit5(), maxiters=1e7, save_everystep = false)
+    # BenchmarkTools.Trial: 7 samples with 1 evaluation.
+    # Range (min … max):  601.395 ms …    1.155 s  ┊ GC (min … max): 0.00% … 0.00%
+    # Time  (median):     650.410 ms               ┊ GC (median):    0.00%
+    # Time  (mean ± σ):   754.617 ms ± 215.762 ms  ┊ GC (mean ± σ):  0.00% ± 0.00%
 
-    # █                                                       █  
-    # █▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█ ▁
-    # 2.95 s         Histogram: frequency by time        2.98 s <
+    # ▁ █  ▁▁                                ▁                    ▁
+    # █▁█▁▁██▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█ ▁
+    # 601 ms           Histogram: frequency by time          1.15 s <
 
-    # Memory estimate: 299.59 MiB, allocs estimate: 3184130.
+    # Memory estimate: 7.56 KiB, allocs estimate: 65.
 
 
 
