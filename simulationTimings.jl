@@ -11,20 +11,19 @@ using .Model
 
 # ODE Benchmark
 prob = ODEProblem(Model.ode!, Model.ic, (0.0, 50000.0), Model.params, abstol=1e-10, reltol=1e-8)
-# TODO: Optimise choice of ODE solver
-@benchmark solve($prob, $Rodas5(), maxiters=1e7)
-    # BenchmarkTools.Trial: 2 samples with 1 evaluation.
-    # Range (min … max):  4.588 s … 7.232 s  ┊ GC (min … max):  0.00% … 25.26%
-    # Time  (median):     5.910 s            ┊ GC (median):    15.46%
-    # Time  (mean ± σ):   5.910 s ± 1.869 s  ┊ GC (mean ± σ):  15.46% ± 17.86%
+sol = solve(prob, Tsit5(), maxiters=1e7)
+plot(sol, idxs=Model.slow_idx)
+@benchmark solve(prob, Tsit5(), maxiters=1e7, save_everystep = false)
+    # BenchmarkTools.Trial: 4 samples with 1 evaluation.
+    # Range (min … max):  1.389 s …   1.445 s  ┊ GC (min … max): 0.00% … 0.00%
+    # Time  (median):     1.423 s              ┊ GC (median):    0.00%
+    # Time  (mean ± σ):   1.420 s ± 24.393 ms  ┊ GC (mean ± σ):  0.00% ± 0.00%
 
-    # █                                                     █  
-    # █▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█ ▁
-    # 4.59 s        Histogram: frequency by time       7.23 s <
+    # █                       █                  █            █
+    # █▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁▁▁█ ▁
+    # 1.39 s         Histogram: frequency by time        1.45 s <
 
-    # Memory estimate: 498.89 MiB, allocs estimate: 5269493.
-
-
+    # Memory estimate: 7.56 KiB, allocs estimate: 65.
 
 
 
