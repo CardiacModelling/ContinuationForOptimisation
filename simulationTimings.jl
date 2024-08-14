@@ -53,8 +53,8 @@ sol_pulse = solve(prob, Rodas5())
 bptrap, ci = BK.generate_ci_problem(PeriodicOrbitTrapProblem(M = 150),
 bp, sol_pulse, 20.0)
 
-opts_br = ContinuationPar(p_min = pVal*0.9, p_max = pVal*1.1, max_steps = 50, tol_stability = 1e-8, ds=0.1*pVal, dsmax=0.1*pVal,
-newton_options=NewtonPar(verbose=true))
+opts_br = ContinuationPar(p_min = pVal*0.9, p_max = pVal*1.1, max_steps = 50, tol_stability = 1e-8, ds=0.1*pVal, dsmax=0.1*pVal, 
+detect_bifurcation=0, detect_fold=false, newton_options=NewtonPar(verbose=true))
 brpo_fold = continuation(bptrap, ci, PALC(), opts_br;
 	verbosity = 3, plot = true,
 	argspo...
@@ -69,18 +69,19 @@ sol = solve(prob, Rodas5())
 plot(sol, idxs=slow_idx)
 display(title!("Plot of slow variable from continuation"))
 
-reducedOpts = ContinuationPar(p_min = 108., p_max = 132., max_steps = 50, tol_stability = 1e-8, ds=25., dsmax=40.,)
-@benchmark continuation($bptrap, $ci, PALC(), $reducedOpts)
-    # BenchmarkTools.Trial: 14 samples with 1 evaluation.
-    # Range (min … max):  341.445 ms … 395.060 ms  ┊ GC (min … max): 8.15% … 11.26%
-    # Time  (median):     367.146 ms               ┊ GC (median):    8.94%
-    # Time  (mean ± σ):   368.815 ms ±  17.014 ms  ┊ GC (mean ± σ):  8.75% ±  3.58%
+reducedOpts = ContinuationPar(p_min = pVal*0.9, p_max = pVal*1.1, max_steps = 50, tol_stability = 1e-8, ds=0.1*pVal, dsmax=0.1*pVal, 
+detect_bifurcation=0, detect_fold=false,)
+@benchmark continuation($bptrap, $ci, $PALC(), $reducedOpts)
+    # BenchmarkTools.Trial: 22 samples with 1 evaluation.
+    # Range (min … max):  190.612 ms … 443.830 ms  ┊ GC (min … max):  0.00% … 25.17%
+    # Time  (median):     221.913 ms               ┊ GC (median):    10.89%
+    # Time  (mean ± σ):   232.739 ms ±  51.737 ms  ┊ GC (mean ± σ):   9.46% ±  7.75%
 
-    # █        █   █   ██ █     █     █    █  █ █              █ ██  
-    # █▁▁▁▁▁▁▁▁█▁▁▁█▁▁▁██▁█▁▁▁▁▁█▁▁▁▁▁█▁▁▁▁█▁▁█▁█▁▁▁▁▁▁▁▁▁▁▁▁▁▁█▁██ ▁
-    # 341 ms           Histogram: frequency by time          395 ms <
+    # ▁  ▁▁▁ █     ▁
+    # █▁▆███▆█▁▆▆▆▁█▆▁▁▁▁▁▁▆▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▆ ▁
+    # 191 ms           Histogram: frequency by time          444 ms <
 
-    # Memory estimate: 248.03 MiB, allocs estimate: 410026.
+    # Memory estimate: 230.38 MiB, allocs estimate: 376687.
 
 
 
