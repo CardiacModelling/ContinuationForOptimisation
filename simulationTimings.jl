@@ -29,7 +29,6 @@ run(b, samples=10, seconds=300)
 
 
 # Continuation Benchmark
-# TODO: try other continuation methods (shooting and oColl)
 # Look at times to do a +- 10% change in each parameter and average results across a few parameters (only conductances)
 lens = Model.cont_params[1]
 pVal = Setfield.get(Model.params, lens)
@@ -51,24 +50,49 @@ argspo = (record_from_solution = (x, p) -> begin
 prob = remake(prob, u0 = Model.ic_conv, tspan=(0.0, 20.0))
 sol_pulse = solve(prob, Rodas5())
 
+# Trapezoidal method
 bptrap, ci = BK.generate_ci_problem(PeriodicOrbitTrapProblem(M = 150),
 bp, sol_pulse, 20.0)
 
 opts_br = ContinuationPar(p_min = pVal*0.9, p_max = pVal*1.1, max_steps = 50, tol_stability = 1e-8, ds=0.1*pVal, dsmax=0.1*pVal, 
 detect_bifurcation=0, detect_fold=false, newton_options=NewtonPar(verbose=true))
-brpo_fold = continuation(bptrap, ci, PALC(), opts_br;
+brpo_trap = continuation(bptrap, ci, PALC(), opts_br;
+	verbosity = 3, plot = true,
+	argspo...
+)
+
+# Orthogonal collocation method
+bpoc, cioc = BK.generate_ci_problem(PeriodicOrbitOCollProblem(30, 4),
+bp, sol_pulse, 20.0)
+
+brpo_oc = continuation(bpoc, cioc, PALC(), opts_br;
+	verbosity = 3, plot = true,
+	argspo...
+)
+
+# Shooting method
+bpsh, cish = BK.generate_ci_problem(ShootingProblem(M=1),
+bp, prob, sol_pulse, 20.0; alg = Tsit5(), abstol=1e-10, reltol=1e-8)
+
+brpo_sh = continuation(bpsh, cish, PALC(), opts_br;
 	verbosity = 3, plot = true,
 	argspo...
 )
 
 # Verify that s is converged
-ic = brpo_fold.sol[2].x[1:5]
 p = Model.params
 p = @set p.gna = 132.0
-prob = remake(prob, u0 = ic, tspan=(0.0, 50000.0), p=p)
-sol = solve(prob, Rodas5())
-plot(sol, idxs=slow_idx)
-display(title!("Plot of slow variable from continuation"))
+
+function check_converged(prob, ic, p, slow_idx, name="")
+    prob = remake(prob, u0 = ic, tspan=(0.0, 50000.0), p=p)
+    sol = solve(prob, Rodas5())
+    plot(sol, idxs=slow_idx)
+    display(title!("Plot of slow variable from continuation: "*name))
+end
+
+check_converged(prob, brpo_trap.sol[2].x[1:5], p, Model.slow_idx, "Trap")
+check_converged(prob, brpo_oc.sol[2].x[1:5], p, Model.slow_idx, "OColl")
+check_converged(prob, brpo_sh.sol[2].x[1:5], p, Model.slow_idx, "Shooting")
 
 reducedOpts = ContinuationPar(p_min = pVal*0.9, p_max = pVal*1.1, max_steps = 50, tol_stability = 1e-8, ds=0.1*pVal, dsmax=0.1*pVal, 
 detect_bifurcation=0, detect_fold=false,)
@@ -86,7 +110,32 @@ run(b, samples=50, seconds=300)
     # Memory estimate: 230.37 MiB, allocs estimate: 376537.
 # Can't seem to get rid of the outlier
 
+b = @benchmarkable continuation($bpoc, $cioc, $PALC(), $reducedOpts)
+run(b, samples=50, seconds=300)
+    # BenchmarkTools.Trial: 50 samples with 1 evaluation.
+    # Range (min … max):  105.218 ms …    1.058 s  ┊ GC (min … max): 0.00% …  0.00%
+    # Time  (median):     168.179 ms               ┊ GC (median):    0.00%
+    # Time  (mean ± σ):   223.247 ms ± 165.528 ms  ┊ GC (mean ± σ):  6.11% ± 12.61%
 
+    # █ ▄█▆▁   
+    # █▆████▇▄▁▁▆▆▁▁▁▄▁▁▁▁▁▄▁▄▄▁▁▁▄▁▄▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▄ ▁
+    # 105 ms           Histogram: frequency by time          1.06 s <
+
+    # Memory estimate: 65.23 MiB, allocs estimate: 22847.
+# OColl parameters can be optimised more - just struggling with consistency at the moment
+
+b = @benchmarkable continuation($bpsh, $cish, $PALC(), $reducedOpts)
+run(b, samples=50, seconds=300)
+    # BenchmarkTools.Trial: 50 samples with 1 evaluation.
+    # Range (min … max):  20.697 ms … 30.332 ms  ┊ GC (min … max): 0.00% … 0.00%
+    # Time  (median):     24.089 ms              ┊ GC (median):    0.00%
+    # Time  (mean ± σ):   24.129 ms ±  2.048 ms  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+    #             ▂▂  ▅    ▅ █         ▅                            
+    # █▁▁▁▅▅▅▁█▁███▁▅█▁▅▅▁███▅███▁▁▁▅▁█▁▅▁▁▅▁▁▁▁▁▁▁▁▁▁▁▁▁▅▁▁▁▁▁▅▅ ▁
+    # 20.7 ms         Histogram: frequency by time        30.3 ms <
+
+    # Memory estimate: 410.88 KiB, allocs estimate: 2468.
 
 # How long to it take to converge for ODE small step?
 prob = remake(prob, u0 = Model.ic_conv, tspan=(0.0, 50000.0))
