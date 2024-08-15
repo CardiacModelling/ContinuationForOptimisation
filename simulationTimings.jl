@@ -13,23 +13,24 @@ using .Model
 prob = ODEProblem(Model.ode!, Model.ic, (0.0, 50000.0), Model.params, abstol=1e-10, reltol=1e-8)
 sol = solve(prob, Tsit5(), maxiters=1e7)
 plot(sol, idxs=Model.slow_idx)
-@benchmark solve(prob, Tsit5(), maxiters=1e7, save_everystep = false)
-    # BenchmarkTools.Trial: 4 samples with 1 evaluation.
-    # Range (min … max):  1.389 s …   1.445 s  ┊ GC (min … max): 0.00% … 0.00%
-    # Time  (median):     1.423 s              ┊ GC (median):    0.00%
-    # Time  (mean ± σ):   1.420 s ± 24.393 ms  ┊ GC (mean ± σ):  0.00% ± 0.00%
+b = @benchmarkable solve($prob, $Tsit5(), maxiters=1e7, save_everystep = false)
+run(b, samples=10, seconds=300)
+    # BenchmarkTools.Trial: 10 samples with 1 evaluation.
+    # Range (min … max):  944.588 ms …   1.025 s  ┊ GC (min … max): 0.00% … 0.00%
+    # Time  (median):     985.782 ms              ┊ GC (median):    0.00%
+    # Time  (mean ± σ):   983.557 ms ± 27.565 ms  ┊ GC (mean ± σ):  0.00% ± 0.00%
 
-    # █                       █                  █            █
-    # █▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁▁▁█ ▁
-    # 1.39 s         Histogram: frequency by time        1.45 s <
+    # █             ▁     ▁      ▁      ▁   █                ▁   ▁
+    # █▁▁▁▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁█▁▁▁▁▁▁█▁▁▁▁▁▁█▁▁▁█▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█▁▁▁█ ▁
+    # 945 ms          Histogram: frequency by time          1.03 s <
 
     # Memory estimate: 7.56 KiB, allocs estimate: 65.
 
 
 
 # Continuation Benchmark
+# TODO: try other continuation methods (shooting and oColl)
 # Look at times to do a +- 10% change in each parameter and average results across a few parameters (only conductances)
-# Bifurcation Problem
 lens = Model.cont_params[1]
 pVal = Setfield.get(Model.params, lens)
 bp = BifurcationProblem(Model.ode!, Model.ic_conv, Model.params, lens;
@@ -60,7 +61,7 @@ brpo_fold = continuation(bptrap, ci, PALC(), opts_br;
 	argspo...
 )
 
-# Verify that s is converged - mostly, but could probably get closer
+# Verify that s is converged
 ic = brpo_fold.sol[2].x[1:5]
 p = Model.params
 p = @set p.gna = 132.0
@@ -71,18 +72,19 @@ display(title!("Plot of slow variable from continuation"))
 
 reducedOpts = ContinuationPar(p_min = pVal*0.9, p_max = pVal*1.1, max_steps = 50, tol_stability = 1e-8, ds=0.1*pVal, dsmax=0.1*pVal, 
 detect_bifurcation=0, detect_fold=false,)
-@benchmark continuation($bptrap, $ci, $PALC(), $reducedOpts)
-    # BenchmarkTools.Trial: 22 samples with 1 evaluation.
-    # Range (min … max):  190.612 ms … 443.830 ms  ┊ GC (min … max):  0.00% … 25.17%
-    # Time  (median):     221.913 ms               ┊ GC (median):    10.89%
-    # Time  (mean ± σ):   232.739 ms ±  51.737 ms  ┊ GC (mean ± σ):   9.46% ±  7.75%
+b = @benchmarkable continuation($bptrap, $ci, $PALC(), $reducedOpts)
+run(b, samples=50, seconds=300)
+    # BenchmarkTools.Trial: 50 samples with 1 evaluation.
+    # Range (min … max):  184.012 ms …    1.468 s  ┊ GC (min … max):  0.00% … 83.09%
+    # Time  (median):     212.174 ms               ┊ GC (median):     0.00%
+    # Time  (mean ± σ):   258.983 ms ± 180.944 ms  ┊ GC (mean ± σ):  17.66% ± 14.63%
 
-    # ▁  ▁▁▁ █     ▁
-    # █▁▆███▆█▁▆▆▆▁█▆▁▁▁▁▁▁▆▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▆ ▁
-    # 191 ms           Histogram: frequency by time          444 ms <
+    # █    
+    # █▄▄▅▆▅▃▁▁▃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▃ ▁
+    # 184 ms           Histogram: frequency by time          1.47 s <
 
-    # Memory estimate: 230.38 MiB, allocs estimate: 376687.
-
+    # Memory estimate: 230.37 MiB, allocs estimate: 376537.
+# Can't seem to get rid of the outlier
 
 
 
@@ -95,15 +97,16 @@ ylabel!("Slow variable")
 display(title!("ODE from previous converged IC (gna: 120 -> 132)"))
 # Converged for the small change after t=30,000ms
 prob = remake(prob, tspan=(0.0, 30000.0))
-@benchmark solve($prob, $Tsit5(), maxiters=1e7, save_everystep = false)
-    # BenchmarkTools.Trial: 7 samples with 1 evaluation.
-    # Range (min … max):  601.395 ms …    1.155 s  ┊ GC (min … max): 0.00% … 0.00%
-    # Time  (median):     650.410 ms               ┊ GC (median):    0.00%
-    # Time  (mean ± σ):   754.617 ms ± 215.762 ms  ┊ GC (mean ± σ):  0.00% ± 0.00%
+b = @benchmarkable solve($prob, $Tsit5(), maxiters=1e7, save_everystep = false)
+run(b, samples=50, seconds=300)
+    # BenchmarkTools.Trial: 50 samples with 1 evaluation.
+    # Range (min … max):  564.056 ms …    1.584 s  ┊ GC (min … max): 0.00% … 0.00%
+    # Time  (median):     732.226 ms               ┊ GC (median):    0.00%
+    # Time  (mean ± σ):   852.892 ms ± 271.111 ms  ┊ GC (mean ± σ):  0.00% ± 0.00%
 
-    # ▁ █  ▁▁                                ▁                    ▁
-    # █▁█▁▁██▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█ ▁
-    # 601 ms           Histogram: frequency by time          1.15 s <
+    #     ▆ ▁█    ▁      
+    # ▄▇▄█▇██▇▇▄▄█▁▄▁▇▄▁▁▄▁▁▁▄▇▄▁▁▁▇▁▄▁▁▁▄▁▁▁▄▁▄▁▄▄▄▁▄▁▁▁▁▁▁▁▁▁▁▁▄▄ ▁
+    # 564 ms           Histogram: frequency by time          1.58 s <
 
     # Memory estimate: 7.56 KiB, allocs estimate: 65.
 
