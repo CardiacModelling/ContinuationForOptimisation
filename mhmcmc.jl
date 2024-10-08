@@ -19,6 +19,7 @@ function mcmc(numSamples::Int64, solver::Function, initP::Vector{Float64}, prob:
     #     The verbosity level. 0 is silent, 1 is standard, 2 is debug
     # Set up
     chain = zeros(numSamples, length(initP))
+    accepts = zeros(numSamples)
     x = copy(initP)
     σ = x[end]
     prob = remake(prob, p=paramMap(x, x), u0=Model.ic_conv)
@@ -67,10 +68,15 @@ function mcmc(numSamples::Int64, solver::Function, initP::Vector{Float64}, prob:
             σ = σNew
             lc = lcNew
             llOld = llNew
+            accepts[i] = 1
         else
             if verbose > 0
                 println("- Proposal rejected")
             end
+            accepts[i] = 0
+        end
+        if verbose > 0
+            println("Acceptance rate: ", sum(accepts)/i)
         end
         chain[i, :] = x
     end
