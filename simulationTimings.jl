@@ -29,26 +29,26 @@ run(b, samples=10, seconds=300)
 
 
 # Continuation Benchmark
+# TODO: how well do continuation methods work at converging the slow variables in the initial guess?
+# TODO: Look at other parameters
 # Look at times to do a +- 10% change in each parameter and average results across a few parameters (only conductances)
-lens = Model.cont_params[1]
-pVal = Setfield.get(Model.params, lens)
-bp = BifurcationProblem(Model.ode!, Model.ic_conv, Model.params, lens;
-	record_from_solution = (x, p) -> (V = x[plot_idx]),)
+lens = (@lens _.gna) # TODO: Do i need the brackets here?
+pVal = Setfield.get(Model.params_cont, lens)
+bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, Model.params_cont, lens;
+	record_from_solution = (x, p) -> (V = x[Model.plot_idx]),)
 
 argspo = (record_from_solution = (x, p) -> begin
 		xtt = get_periodic_orbit(p.prob, x, p.p)
-		return (max = maximum(xtt[plot_idx,:]),
-				min = minimum(xtt[plot_idx,:]),
 				period = getperiod(p.prob, x, p.p))
 	end,
 	plot_solution = (x, p; k...) -> begin
 		xtt = get_periodic_orbit(p.prob, x, p.p)
-		plot!(xtt.t, xtt[plot_idx,:]; label = "V", k...)
+		plot!(xtt.t, xtt[Model.plot_idx,:]; label = "V", k...)
 	end)
 
 # 1 pulse solution
-prob = remake(prob, u0 = Model.ic_conv, tspan=(0.0, 20.0))
-sol_pulse = solve(prob, Rodas5())
+prob_cont = ODEProblem(Model.ode_cont!, Model.ic_conv, (0.0, 20.0), Model.params_cont, abstol=1e-10, reltol=1e-8)
+sol_pulse = solve(prob_cont, Tsit5())
 
 # Trapezoidal method
 bptrap, ci = BK.generate_ci_problem(PeriodicOrbitTrapProblem(M = 150),
@@ -72,7 +72,7 @@ brpo_oc = continuation(bpoc, cioc, PALC(), opts_br;
 
 # Shooting method
 bpsh, cish = BK.generate_ci_problem(ShootingProblem(M=1),
-bp, prob, sol_pulse, 20.0; alg = Tsit5(), abstol=1e-10, reltol=1e-8)
+bp, prob_cont, sol_pulse, 20.0; alg = Tsit5(), abstol=1e-10, reltol=1e-8)
 
 brpo_sh = continuation(bpsh, cish, PALC(), opts_br;
 	verbosity = 3, plot = true,
@@ -85,12 +85,12 @@ p = @set p.gna = 132.0
 
 function check_converged(prob, ic, p, slow_idx, name="")
     prob = remake(prob, u0 = ic, tspan=(0.0, 50000.0), p=p)
-    sol = solve(prob, Rodas5())
+    sol = solve(prob, Tsit5())
     plot(sol, idxs=slow_idx)
     display(title!("Plot of slow variable from continuation: "*name))
 end
 
-check_converged(prob, brpo_trap.sol[2].x[1:5], p, Model.slow_idx, "Trap")
+check_converged(prob, brpo_trap.sol[2].x[1:5], p, Model.slow_idx, "Trap") # Why is it index 2?
 check_converged(prob, brpo_oc.sol[2].x[1:5], p, Model.slow_idx, "OColl")
 check_converged(prob, brpo_sh.sol[2].x[1:5], p, Model.slow_idx, "Shooting")
 
@@ -140,7 +140,7 @@ run(b, samples=50, seconds=300)
 # How long to it take to converge for ODE small step?
 prob = remake(prob, u0 = Model.ic_conv, tspan=(0.0, 50000.0))
 sol = solve(prob, Tsit5(), maxiters=1e7)
-plot(sol, idxs=slow_idx)
+plot(sol, idxs=Model.slow_idx)
 xlabel!("Time (ms)")
 ylabel!("Slow variable")
 display(title!("ODE from previous converged IC (gna: 120 -> 132)"))
