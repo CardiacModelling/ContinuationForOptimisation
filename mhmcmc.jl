@@ -1,6 +1,6 @@
 # Metropolis Hastings MCMC to be used for both ODE solver and continuation solver
 # Also stores and passes the current limit cycle to the next iteration
-using Distributions
+using Distributions, LinearAlgebra
 using Parameters, Plots, ConstructionBase, Revise, Setfield
 using BifurcationKit, DifferentialEquations, BenchmarkTools
 
@@ -14,14 +14,17 @@ using .Model
 # prob is an ODEProblem for computing the full limit cycle and likelihood
 # data is the data to compare the output of solver with
 
-function mcmc(numSamples::Int64, solver::Function, initP::Vector{Float64}, prob::ODEProblem, data::Vector{Float64}, paramMap::Function, verbose::Int64=1)
+function mcmc(numSamples::Int64, solver::Function, μ₀::Vector{Float64}, prob::ODEProblem, data::Vector{Float64}, paramMap::Function, verbose::Int64=1)
     # verbose : int
     #     The verbosity level. 0 is silent, 1 is standard, 2 is debug
     # Set up
-    chain = zeros(numSamples, length(initP))
+    chain = zeros(numSamples, length(μ₀))
     accepts = zeros(numSamples)
-    x = copy(initP)
+    x = copy(μ₀)
     σ = x[end]
+    a = 1.0
+    adaptionStart = ceil(numSamples*0.1) # Start adaptive covariance after 10% of samples
+    Σ = Hermitian(diagm(μ₀/100))
     prob = remake(prob, p=paramMap(x, x), u0=Model.ic_conv)
     lc = solver(x, prob, Model.ic_conv, x, paramMap, verbose)
     llOld = ll(lc, data, σ, prob)
@@ -42,7 +45,7 @@ function mcmc(numSamples::Int64, solver::Function, initP::Vector{Float64}, prob:
         println("Current limit cycle: ", lc)
         end
         # Sample from proposal
-        xNew = q(x, initP)
+        xNew = q(x, a*Σ)
         σNew = xNew[end]
         # Solve with new parameters
         lcNew = solver(xNew, prob, lc, x, paramMap, verbose)
@@ -75,18 +78,38 @@ function mcmc(numSamples::Int64, solver::Function, initP::Vector{Float64}, prob:
             end
             accepts[i] = 0
         end
-        if verbose > 0
-            println("Acceptance rate: ", sum(accepts)/i)
+        if verbose > 0 && i > 100
+            println("Local acceptance rate (%): ", sum(accepts[i-100:i]))
         end
         chain[i, :] = x
+        if i == adaptionStart + 1 && verbose > 0
+            println("Adaption started")
+        end
+        if i > adaptionStart
+            s = i - adaptionStart
+            γ = (s+1)^-0.6
+            Σ = Hermitian((1-γ)*Σ + γ*(x - μ₀)*(x - μ₀)')
+            μ₀ = (1-γ)*μ₀ + γ*x
+            a *= exp(γ*(sum(accepts[Int(adaptionStart)+1:i])/s - 0.25))
+            if verbose > 0
+                println("Adaption acceptance rate: ", sum(accepts[Int(adaptionStart)+1:i])/s)
+            end
+            if verbose > 1
+                println("Adaption step: ", s)
+                println("γ: ", γ)
+                println("Σ: ", Σ)
+                println("μ₀: ", μ₀)
+                println("a: ", a)
+            end
+        end
     end
     return chain
 end
 
-function q(x::Vector{Float64}, initP::Vector{Float64})::Vector{Float64}
+function q(x::Vector{Float64}, Σ::Hermitian{Float64})::Vector{Float64}
     # Perturb state x to get a new state xNew and return it
-    x += initP .* (randn(size(x)).-0.5) ./ 100.0
-    return x
+    d = MvNormal(x, Σ)
+    return rand(d)
 end
 
 function π(x::Vector{Float64})::Float64
@@ -246,14 +269,12 @@ bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, Model.params_cont, lens)
 
 println("Log likelihood of true parameters: ", ll(sol.u[end], odedata, 2.0, prob_true))
 solver(v, w, x, y, z, verbose) = use_continuation ? contSolver(v, w, x, y, z, bp, verbose) : odeSolverCheap(v, w, x, y, z, verbose)
-
-chain = mcmc(20, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, odedata, paramMap, 2)
+numSamples = 1000*5*10 # 1000 samples per parameter before adaption (10% of the samples)
+chain = mcmc(numSamples, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, odedata, paramMap, 1)
 # TODO: How long should ode solver be run for? Check how long it takes to converge max step of perturbation kernal
-# TODO: Long runs of continuation
-# TODO: Track accepts and rejects over time
 
 # Remove burn in stage
-burnIn = 0
+burnIn = Int(round(numSamples*0.25))
 posterior = chain[burnIn+1:end, :]
 
 # Plot posterior
