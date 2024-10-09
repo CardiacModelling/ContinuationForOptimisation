@@ -25,7 +25,7 @@ function mcmc(numSamples::Int64, solver::Function, μ₀::Vector{Float64}, prob:
     a = 1.0
     adaptionStart = ceil(numSamples*0.1) # Start adaptive covariance after 10% of samples
     Σ = Hermitian(diagm(μ₀/100))
-    prob = remake(prob, p=paramMap(x, x), u0=Model.ic_conv)
+    prob = remake(prob, p=paramMap(x, x), u0=Model.ic_conv)::ODEProblem
     lc = solver(x, prob, Model.ic_conv, x, paramMap, verbose)
     llOld = ll(lc, data, σ, prob)
     if verbose > 0
@@ -55,7 +55,7 @@ function mcmc(numSamples::Int64, solver::Function, μ₀::Vector{Float64}, prob:
             println("Proposed limit cycle: ", lcNew)
         end
         # Calculate acceptance probability
-        llNew = ll(lcNew, data, σNew, remake(prob, p=paramMap(xNew, x)))
+        llNew = ll(lcNew, data, σNew, remake(prob, p=paramMap(xNew, x))::ODEProblem)
         α = min(1, exp(π(xNew) + llNew - π(x) - llOld)) # Assuming proposal kernal q(xNew|x) is symmetric
         if verbose > 1
             println("Acceptance probability: ", α)
@@ -122,8 +122,13 @@ end
 
 function ll(limitCycle::Vector{Float64}, data::Vector{Float64}, σ::Float64, prob::ODEProblem)::Float64
     # Calculate the log-likelihood of the limit cycle compared with the data, and σ
-    sol = solve(prob, Tsit5(), dtmax=0.001; tspan=(0.0, 100.0), u0=limitCycle)
-    sol, = aligned_sol(sol, prob, period)
+    sol = solve(prob, Tsit5(), dtmax=0.001; tspan=(0.0, 100.0), u0=limitCycle)::ODESolution
+    try
+        sol, = aligned_sol(sol, prob, period)
+    catch e
+        println("Error: ", e)
+        return -Inf
+    end
     # Calculate the likelihood of the data given the limit cycle
     n = Normal(0, σ)
     return loglikelihood(n, data - sol.u)
@@ -138,23 +143,23 @@ function aligned_sol(sol, prob::ODEProblem, period::Float64 = 0.0; save_only_V::
     end
     ic = sol[:, maxs[end]]
     if save_only_V
-        return solve(prob, Tsit5(), saveat=0.1, save_idxs=Model.plot_idx, tspan=(0.0, period), u0=ic), period
+        return solve(prob, Tsit5(), saveat=0.1, save_idxs=Model.plot_idx, tspan=(0.0, period), u0=ic)::ODESolution, period
     else
-        return solve(prob, Tsit5(), saveat=0.1, tspan=(0.0, period), u0=ic), period
+        return solve(prob, Tsit5(), saveat=0.1, tspan=(0.0, period), u0=ic)::ODESolution, period
     end
 end
 
 function odeSolverFull(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, xlc::Vector{Float64}, paramMap::Function, verbose::Int64)::Vector{Float64}
     # Solve the ODE until convergence starting from the default initial conditions
-    prob = remake(prob, p=paramMap(x, xlc))
-    tmp = solve(prob, Tsit5(), maxiters=1e7, save_everystep = false; tspan=(0.0, 50000.0), p=paramMap(x, xlc)) #Should go to 50000 for full run
+    prob = remake(prob, p=paramMap(x, xlc))::ODEProblem
+    tmp = solve(prob, Tsit5(), maxiters=1e7, save_everystep = false; tspan=(0.0, 50000.0), p=paramMap(x, xlc))::ODESolution
     return tmp[end]
 end
 
 function odeSolverCheap(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, xlc::Vector{Float64}, paramMap::Function, verbose::Int64)::Vector{Float64}
     # Solve the ODE until convergence but starting from the previous limit cycle
-    prob = remake(prob, p=paramMap(x, xlc))
-    tmp = solve(prob, Tsit5(), maxiters=1e7, save_everystep = false; tspan=(0.0, 10000.0), p=paramMap(x, xlc), u0=lc)
+    prob = remake(prob, p=paramMap(x, xlc))::ODEProblem
+    tmp = solve(prob, Tsit5(), maxiters=1e7, save_everystep = false; tspan=(0.0, 10000.0), p=paramMap(x, xlc), u0=lc)::ODESolution
     return tmp[end]
 end
 
@@ -167,10 +172,10 @@ function contSolver(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, x
     # bp: The BifurcationProblem to solve during continuation
     # verbose: The verbosity level (0 silent, 1 standard, 2 debug)
     # Remake BP and prob
-    bp = re_make(bp; u0=lc, params=paramMap(x, xlc))
-    prob = remake(prob, u0=lc, p=paramMap(x, xlc))
+    bp = re_make(bp; u0=lc, params=paramMap(x, xlc))::BifurcationProblem
+    prob = remake(prob, u0=lc, p=paramMap(x, xlc))::ODEProblem
     # Create a solution using the previous limit cycle
-    sol = solve(prob, Tsit5(), maxiters=1e7; tspan=(0.0, 50.0))
+    sol = solve(prob, Tsit5(), maxiters=1e7; tspan=(0.0, 50.0))::ODESolution
     # Shooting method
     bpsh, cish = BifurcationKit.generate_ci_problem(ShootingProblem(M=1),
     bp, prob, sol, period; alg = Tsit5(), abstol=1e-10, reltol=1e-8)
@@ -179,7 +184,7 @@ function contSolver(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, x
     detect_bifurcation=0, detect_fold=false,)
 
     bothside = xlc != x
-    local brpo_sh
+    local brpo_sh::ContResult
     try
         brpo_sh = continuation(bpsh, cish, PALC(), opts_br;
     verbosity = 0, bothside=bothside)
@@ -245,7 +250,7 @@ function param_map_cont(x::Vector{Float64}, xlc::Vector{Float64})::NamedTuple
 end
 
 use_continuation = false
-paramMap(x,y) = use_continuation ? param_map_cont(x,y) : param_map(x)
+paramMap(x,y) = (use_continuation ? param_map_cont(x,y) : param_map(x))::NamedTuple
 prob = ODEProblem(use_continuation ? Model.ode_cont! : Model.ode!, Model.ic, (0.0, 50000.0), 
     use_continuation ? Model.params_cont : Model.params, abstol=1e-10, reltol=1e-8)
 # # Parameters we will try to fit to
@@ -254,8 +259,8 @@ p = @set p.gna = 110.0
 p = @set p.gk = 11.0
 p = @set p.gs = 12.0
 p = @set p.gl = 0.25
-prob_true = remake(prob, p=p)
-sol = solve(prob_true, Tsit5(), maxiters=1e7)
+prob_true = remake(prob, p=p)::ODEProblem
+sol = solve(prob_true, Tsit5(), maxiters=1e7)::ODESolution
 display(plot(sol, idxs=Model.slow_idx, title="Check limit cycle is converged for true data"))
 
 sol_pulse, period = aligned_sol(sol, prob_true,)
@@ -265,7 +270,7 @@ display(plot!(sol_pulse.t, odedata, label="Data"))
 
 # Set up continuation solver
 lens = (@lens _.step)
-bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, Model.params_cont, lens)
+const bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, Model.params_cont, lens)
 
 println("Log likelihood of true parameters: ", ll(sol.u[end], odedata, 2.0, prob_true))
 solver(v, w, x, y, z, verbose) = use_continuation ? contSolver(v, w, x, y, z, bp, verbose) : odeSolverCheap(v, w, x, y, z, verbose)
@@ -289,4 +294,4 @@ for i in axes(posterior, 2)
     display(ylabel!("P(x)"))
 end
 
-plot((chain'./[110.0, 11.0, 12.0, 0.25, 2.0])', label=paramNames, title="Parameter and noise convergence", xlabel="Iteration", ylabel="Parameter value (relative to true)")
+# plot((chain'./[110.0, 11.0, 12.0, 0.25, 2.0])', label=paramNames, title="Parameter and noise convergence", xlabel="Iteration", ylabel="Parameter value (relative to true)")
