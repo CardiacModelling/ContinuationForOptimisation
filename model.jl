@@ -66,8 +66,8 @@ function ode_cont!(dz, z, p, t=0)
 end
 
 # parameter values
-params = (gna=120.0, gk=13.0, gs=10.0, gl=0.3)
-params_cont = (gna=120.0, gk=13.0, gs=10.0, gl=0.3, gna_step=0.0, gk_step=0.0, gs_step=0.0, gl_step=0.0, step=0.0)
+params = (gna=120.0, gk=13.0, gs=10.0, gl=0.3)::NamedTuple{(:gna, :gk, :gs, :gl), Tuple{Float64, Float64, Float64, Float64}}
+params_cont = (gna=120.0, gk=13.0, gs=10.0, gl=0.3, gna_step=0.0, gk_step=0.0, gs_step=0.0, gl_step=0.0, step=0.0)::NamedTuple{(:gna, :gk, :gs, :gl, :gna_step, :gk_step, :gs_step, :gl_step, :step), Tuple{Float64, Float64, Float64, Float64, Float64, Float64, Float64, Float64, Float64}}
 
 # initial condition
 ic = [0.05, 0.6, 0.325, 0.3, -75.0]

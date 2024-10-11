@@ -122,44 +122,39 @@ end
 
 function ll(limitCycle::Vector{Float64}, data::Vector{Float64}, σ::Float64, prob::ODEProblem)::Float64
     # Calculate the log-likelihood of the limit cycle compared with the data, and σ
-    sol = solve(prob, Tsit5(), dtmax=0.001; tspan=(0.0, 100.0), u0=limitCycle)::ODESolution
-    try
-        sol, = aligned_sol(sol, prob, period)
-    catch e
-        println("Error: ", e)
-        return -Inf
-    end
+    sol = solve(prob, Tsit5(); tspan=(0.0, period*2.0), u0=limitCycle, save_idxs=Model.plot_idx, saveat=0.01, dense=false)::ODESolution
+    sol, = aligned_sol(sol, prob, period)
     # Calculate the likelihood of the data given the limit cycle
     n = Normal(0, σ)
     return loglikelihood(n, data - sol.u)
 end
 
 function aligned_sol(sol, prob::ODEProblem, period::Float64 = 0.0; save_only_V::Bool = true)
-    # Align the limit cycle in the solution to start at the min of V
-    maxs = get_maxs(sol)
+    # Align the limit cycle in the solution to start at the max of V
     if period == 0.0
+        maxs = get_maxs(sol)
         period = get_period(maxs)
         println("Period: ", period)
     end
-    ic = sol[:, maxs[end]]
+    t = sol.t[argmax(sol.u)]
+    sol = solve(prob, Tsit5(); tspan = (0.0,t), u0=sol.prob.u0, save_everystep=false, save_start=false) # ; tspan = (0, t), u0 = sol.prob.u0, save_everystep=false, save_start=false
     if save_only_V
-        return solve(prob, Tsit5(), saveat=0.1, save_idxs=Model.plot_idx, tspan=(0.0, period), u0=ic)::ODESolution, period
+        return solve(prob, Tsit5(), saveat=0.1, save_idxs=Model.plot_idx, tspan=(0.0, period), u0=sol.u[end])::ODESolution, period
     else
-        return solve(prob, Tsit5(), saveat=0.1, tspan=(0.0, period), u0=ic)::ODESolution, period
+        return solve(prob, Tsit5(), saveat=0.1, tspan=(0.0, period), u0=sol.u[end])::ODESolution, period
     end
 end
 
 function odeSolverFull(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, xlc::Vector{Float64}, paramMap::Function, verbose::Int64)::Vector{Float64}
     # Solve the ODE until convergence starting from the default initial conditions
     prob = remake(prob, p=paramMap(x, xlc))::ODEProblem
-    tmp = solve(prob, Tsit5(), maxiters=1e7, save_everystep = false; tspan=(0.0, 50000.0), p=paramMap(x, xlc))::ODESolution
+    tmp = solve(prob, Tsit5(), maxiters=1e7, save_everystep = false; tspan=(0.0, 50000.0), p=paramMap(x, xlc), save_start=false)::ODESolution
     return tmp[end]
 end
 
 function odeSolverCheap(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, xlc::Vector{Float64}, paramMap::Function, verbose::Int64)::Vector{Float64}
     # Solve the ODE until convergence but starting from the previous limit cycle
-    prob = remake(prob, p=paramMap(x, xlc))::ODEProblem
-    tmp = solve(prob, Tsit5(), maxiters=1e7, save_everystep = false; tspan=(0.0, 10000.0), p=paramMap(x, xlc), u0=lc)::ODESolution
+    tmp = solve(prob, Tsit5(), maxiters=1e7, save_everystep = false; tspan=(0.0, 10000.0), p=paramMap(x, xlc), u0=lc, save_start=false)::ODESolution
     return tmp[end]
 end
 
@@ -180,21 +175,10 @@ function contSolver(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, x
     bpsh, cish = BifurcationKit.generate_ci_problem(ShootingProblem(M=1),
     bp, prob, sol, period; alg = Tsit5(), abstol=1e-10, reltol=1e-8)
 
-    opts_br = ContinuationPar(p_min = 0.0, p_max = 1.0, max_steps = 150, tol_stability = 1e-8, ds=1.0, dsmax=1.0, 
-    detect_bifurcation=0, detect_fold=false,)
-
     bothside = xlc != x
-    local brpo_sh::ContResult
-    try
-        brpo_sh = continuation(bpsh, cish, PALC(), opts_br;
+    brpo_sh = continuation(bpsh, cish, PALC(), opts_br;
     verbosity = 0, bothside=bothside)
-    catch e
-        if verbose > 0
-            println("Error: ", e)
-            println("Falling back to ODE solver")
-        end
-        return odeSolverCheap(x, prob, lc, xlc, paramMap, verbose)
-    end
+
     if brpo_sh.sol[end].p == 1.0
         return brpo_sh.sol[end].x[1:5]
     elseif brpo_sh.sol[1].p == 1.0
@@ -225,73 +209,103 @@ function get_period(maxs::Vector{Int64})::Float64
     return period
 end
 
-function param_map(x::Vector{Float64})::NamedTuple
-    p = Model.params
-    p = @set p.gna = x[1]
-    p = @set p.gk = x[2]
-    p = @set p.gs = x[3]
-    p = @set p.gl = x[4]
-    return p
+function param_map(x::Vector{Float64})::NamedTuple{(:gna, :gk, :gs, :gl), Tuple{Float64, Float64, Float64, Float64}}
+    par = p
+    par = @set par.gna = x[1]
+    par = @set par.gk = x[2]
+    par = @set par.gs = x[3]
+    par = @set par.gl = x[4]
+    return par
 end
 
-function param_map_cont(x::Vector{Float64}, xlc::Vector{Float64})::NamedTuple
+function param_map_cont(x::Vector{Float64}, xlc::Vector{Float64})::NamedTuple{(:gna, :gk, :gs, :gl, :gna_step, :gk_step, :gs_step, :gl_step, :step), Tuple{Float64, Float64, Float64, Float64, Float64, Float64, Float64, Float64, Float64}}
     # x: The parameters to find the limit cycle for
     # xlc: The parameters of the previous limit cycle
-    p = Model.params_cont
-    p = @set p.gna = xlc[1]
-    p = @set p.gk = xlc[2]
-    p = @set p.gs = xlc[3]
-    p = @set p.gl = xlc[4]
-    p = @set p.gna_step = x[1] - xlc[1]
-    p = @set p.gk_step = x[2] - xlc[2]
-    p = @set p.gs_step = x[3] - xlc[3]
-    p = @set p.gl_step = x[4] - xlc[4]
-    return p
+    par = p
+    par = @set par.gna = xlc[1]
+    par = @set par.gk = xlc[2]
+    par = @set par.gs = xlc[3]
+    par = @set par.gl = xlc[4]
+    par = @set par.gna_step = x[1] - xlc[1]
+    par = @set par.gk_step = x[2] - xlc[2]
+    par = @set par.gs_step = x[3] - xlc[3]
+    par = @set par.gl_step = x[4] - xlc[4]
+    return par
 end
 
-use_continuation = false
-paramMap(x,y) = (use_continuation ? param_map_cont(x,y) : param_map(x))::NamedTuple
-prob = ODEProblem(use_continuation ? Model.ode_cont! : Model.ode!, Model.ic, (0.0, 50000.0), 
-    use_continuation ? Model.params_cont : Model.params, abstol=1e-10, reltol=1e-8)
-# # Parameters we will try to fit to
-p = use_continuation ? Model.params_cont : Model.params
-p = @set p.gna = 110.0
-p = @set p.gk = 11.0
-p = @set p.gs = 12.0
-p = @set p.gl = 0.25
-prob_true = remake(prob, p=p)::ODEProblem
+const use_continuation = true
+const use_fast_ode = true
+const verbose = 1
+dataTime = 100.0 # 50000.0 for final results
+if use_continuation
+    println("Using continuation")
+    paramMap(x,y) = param_map_cont(x,y)
+    const p = Model.params_cont
+    prob = ODEProblem(Model.ode_cont!, Model.ic, (0.0, dataTime), Model.params_cont, abstol=1e-10, reltol=1e-8)
+    # Set up continuation solver
+    lens = (@lens _.step)
+    const bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, Model.params_cont, lens)
+    solver(v, w, x, y, z, verbose) = contSolver(v, w, x, y, z, bp, verbose)
+    const opts_br = ContinuationPar(p_min = 0.0, p_max = 1.0, max_steps = 150, tol_stability = 1e-8, ds=1.0, dsmax=1.0, 
+    detect_bifurcation=0, detect_fold=false,)
+else
+    println("Using ODE solver")
+    paramMap(x, _) = param_map(x)
+    const p = Model.params
+    prob = ODEProblem(Model.ode!, Model.ic, (0.0, dataTime), Model.params, abstol=1e-10, reltol=1e-8)
+    if use_fast_ode
+        println("Using fast ODE solver")
+        solver = odeSolverCheap
+    else
+        println("Using full ODE solver")
+        solver = odeSolverFull
+    end
+end
+
+# Parameters we will try to fit to
+pTrue = p
+pTrue = @set pTrue.gna = 110.0
+pTrue = @set pTrue.gk = 11.0
+pTrue = @set pTrue.gs = 12.0
+pTrue = @set pTrue.gl = 0.25
+# Create data
+#   Run ODE to converged limit cycle
+prob_true = remake(prob, p=pTrue)::ODEProblem
 sol = solve(prob_true, Tsit5(), maxiters=1e7)::ODESolution
 display(plot(sol, idxs=Model.slow_idx, title="Check limit cycle is converged for true data"))
-
+#   Generate aligned data
+sol = solve(prob_true, Tsit5(), maxiters=1e7, u0=sol[end], tspan=(0.0, 100.0))::ODESolution
 sol_pulse, period = aligned_sol(sol, prob_true,)
+#   Add noise and plot
 odedata = Array(sol_pulse.u) + 2.0 * randn(size(sol_pulse))
 plot(sol_pulse, title="True data"; label="Simulation")
 display(plot!(sol_pulse.t, odedata, label="Data"))
 
-# Set up continuation solver
-lens = (@lens _.step)
-const bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, Model.params_cont, lens)
-
 println("Log likelihood of true parameters: ", ll(sol.u[end], odedata, 2.0, prob_true))
-solver(v, w, x, y, z, verbose) = use_continuation ? contSolver(v, w, x, y, z, bp, verbose) : odeSolverCheap(v, w, x, y, z, verbose)
 numSamples = 1000*5*10 # 1000 samples per parameter before adaption (10% of the samples)
-chain = mcmc(numSamples, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, odedata, paramMap, 1)
+BenchmarkTools.DEFAULT_PARAMETERS.seconds = 1
+BenchmarkTools.DEFAULT_PARAMETERS.samples = 1
+BenchmarkTools.DEFAULT_PARAMETERS.evals = 1
+
+@benchmark mcmc(30, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, odedata, paramMap, verbose)
+#@profview mcmc(20, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, odedata, paramMap, verbose)
+
 # TODO: How long should ode solver be run for? Check how long it takes to converge max step of perturbation kernal
 
-# Remove burn in stage
-burnIn = Int(round(numSamples*0.25))
-posterior = chain[burnIn+1:end, :]
+# # Remove burn in stage
+# burnIn = Int(round(numSamples*0.25))
+# posterior = chain[burnIn+1:end, :]
 
-# Plot posterior
-paramNames = ["gna" "gk" "gs" "gl" "σ"]
-for i in axes(posterior, 2)
-    histogram(posterior[:, i], normalize=:pdf)
-    if i == size(posterior, 2)
-        title!("Noise")
-    else
-        title!("Parameter "*paramNames[i])
-    end
-    display(ylabel!("P(x)"))
-end
+# # Plot posterior
+# paramNames = ["gna" "gk" "gs" "gl" "σ"]
+# for i in axes(posterior, 2)
+#     histogram(posterior[:, i], normalize=:pdf)
+#     if i == size(posterior, 2)
+#         title!("Noise")
+#     else
+#         title!("Parameter "*paramNames[i])
+#     end
+#     display(ylabel!("P(x)"))
+# end
 
 # plot((chain'./[110.0, 11.0, 12.0, 0.25, 2.0])', label=paramNames, title="Parameter and noise convergence", xlabel="Iteration", ylabel="Parameter value (relative to true)")
