@@ -122,7 +122,7 @@ function mcmc(numSamples::Int64, solver::Function, μ₀::Vector{Float64}, prob:
             μ₀ = (1-γ)*μ₀ + γ*x
             a *= exp(γ*(sum(accepts[Int(adaptionStart)+1:i])/s - 0.25))
             if verbose > 0
-                println("Adaption acceptance rate: ", sum(accepts[Int(adaptionStart)+1:i])/s)
+                println("Current adaption acceptance rate: ", sum(accepts[Int(adaptionStart)+1:i])/s)
             end
             if verbose > 1
                 println("Adaption step: ", s)
@@ -178,13 +178,13 @@ end
 function odeSolverFull(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, xlc::Vector{Float64}, paramMap::Function, verbose::Int64)::Vector{Float64}
     # Solve the ODE until convergence starting from the default initial conditions
     prob = remake(prob, p=paramMap(x, xlc))::ODEProblem
-    tmp = solve(prob, Tsit5(), maxiters=1e7, save_everystep = false; tspan=(0.0, 50000.0), p=paramMap(x, xlc), save_start=false)::ODESolution
+    tmp = solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 50000.0), p=paramMap(x, xlc), save_start=false)::ODESolution
     return tmp[end]
 end
 
 function odeSolverCheap(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, xlc::Vector{Float64}, paramMap::Function, verbose::Int64)::Vector{Float64}
     # Solve the ODE until convergence but starting from the previous limit cycle
-    tmp = solve(prob, Tsit5(), maxiters=1e7, save_everystep = false; tspan=(0.0, 10000.0), p=paramMap(x, xlc), u0=lc, save_start=false)::ODESolution
+    tmp = solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 10000.0), p=paramMap(x, xlc), u0=lc, save_start=false)::ODESolution
     return tmp[end]
 end
 
@@ -200,7 +200,7 @@ function contSolver(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, x
     bp = re_make(bp; u0=lc, params=paramMap(x, xlc))::BifurcationProblem
     prob = remake(prob, u0=lc, p=paramMap(x, xlc))::ODEProblem
     # Create a solution using the previous limit cycle
-    sol = solve(prob, Tsit5(), maxiters=1e7; tspan=(0.0, 50.0))::ODESolution
+    sol = solve(prob, Tsit5(), tspan=(0.0, 50.0))::ODESolution
     # Shooting method
     bpsh, cish = BifurcationKit.generate_ci_problem(ShootingProblem(M=1),
     bp, prob, sol, period; alg = Tsit5(), abstol=1e-10, reltol=1e-8)
@@ -278,7 +278,7 @@ if use_continuation
     println("Using continuation")
     paramMap(x,y) = param_map_cont(x,y)
     const p = Model.params_cont
-    prob = ODEProblem(Model.ode_cont!, Model.ic, (0.0, dataTime), Model.params_cont, abstol=1e-10, reltol=1e-8)
+    prob = ODEProblem(Model.ode_cont!, Model.ic, (0.0, dataTime), Model.params_cont, abstol=1e-10, reltol=1e-8, maxiters=1e7)
     # Set up continuation solver
     lens = (@lens _.step)
     const bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, Model.params_cont, lens)
@@ -289,7 +289,7 @@ else
     println("Using ODE solver")
     paramMap(x, _) = param_map(x)
     const p = Model.params
-    prob = ODEProblem(Model.ode!, Model.ic, (0.0, dataTime), Model.params, abstol=1e-10, reltol=1e-8)
+    prob = ODEProblem(Model.ode!, Model.ic, (0.0, dataTime), Model.params, abstol=1e-10, reltol=1e-8, maxiters=1e7)
     if use_fast_ode
         println("Using fast ODE solver")
         solver = odeSolverCheap
@@ -308,10 +308,10 @@ pTrue = @set pTrue.gl = 0.25
 # Create data
 #   Run ODE to converged limit cycle
 prob_true = remake(prob, p=pTrue)::ODEProblem
-sol = solve(prob_true, Tsit5(), maxiters=1e7)::ODESolution
+sol = solve(prob_true, Tsit5())::ODESolution
 display(plot(sol, idxs=Model.slow_idx, title="Check limit cycle is converged for true data"))
 #   Generate aligned data
-sol = solve(prob_true, Tsit5(), maxiters=1e7, u0=sol[end], tspan=(0.0, 100.0))::ODESolution
+sol = solve(prob_true, Tsit5(), u0=sol[end], tspan=(0.0, 100.0))::ODESolution
 sol_pulse, period = aligned_sol(sol, prob_true,)
 #   Add noise and plot
 odedata = Array(sol_pulse.u) + 2.0 * randn(size(sol_pulse))
