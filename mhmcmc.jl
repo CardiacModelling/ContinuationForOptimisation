@@ -7,12 +7,31 @@ using BifurcationKit, DifferentialEquations, BenchmarkTools
 include("./model.jl")
 using .Model
 
+include("./tools.jl")
+using .Tools
+
 # State x: [conductance parameters, noise σ]
 # State-ish lc: [initial conditions for limit cycle]
 # Solver is a function that takes in a state x and returns a point on the converged limit cycle
 # Init is the initial state x - [conductance parameters, noise σ]
 # prob is an ODEProblem for computing the full limit cycle and likelihood
 # data is the data to compare the output of solver with
+function converge(ic, solver, check, verbose=1)
+    lc = copy(ic)
+    for i in 1:5
+        lc = solver(lc)
+        if check(lc)
+            if verbose > 1 && i > 1
+                println("Required ", i, " iterations to converge")
+            end
+            return lc
+        end
+    end
+    if verbose > 0
+        println("Failed to converge to the limit cycle")
+    end
+    return nothing
+end
 
 function mcmc(numSamples::Int64, solver::Function, μ₀::Vector{Float64}, prob::ODEProblem, data::Vector{Float64}, paramMap::Function, verbose::Int64=1)
     # verbose : int
@@ -26,8 +45,14 @@ function mcmc(numSamples::Int64, solver::Function, μ₀::Vector{Float64}, prob:
     adaptionStart = ceil(numSamples*0.1) # Start adaptive covariance after 10% of samples
     Σ = Hermitian(diagm(μ₀/100))
     prob = remake(prob, p=paramMap(x, x), u0=Model.ic_conv)::ODEProblem
-    lc = solver(x, prob, Model.ic_conv, x, paramMap, verbose)
-    llOld = ll(lc, data, σ, prob)
+    lc = converge(Model.ic_conv, (ic) -> solver(x, prob, ic, x, paramMap, verbose), (ic) -> Tools.auto_converge_check(prob, ic, paramMap(x, x)), verbose)
+    if lc === nothing
+        lc = Model.ic_conv
+        llOld = -Inf
+    else
+        llOld = ll(lc, data, σ, prob)
+    end
+
     if verbose > 0
         println("========        Starting MCMC        ========")
         println("Initial parameters: ", x[1:end-1])
@@ -48,14 +73,19 @@ function mcmc(numSamples::Int64, solver::Function, μ₀::Vector{Float64}, prob:
         xNew = q(x, a*Σ)
         σNew = xNew[end]
         # Solve with new parameters
-        lcNew = solver(xNew, prob, lc, x, paramMap, verbose)
+        lcNew = converge(lc, (ic) -> solver(xNew, prob, ic, x, paramMap, verbose), (ic) -> Tools.auto_converge_check(prob, ic, paramMap(xNew, xNew)), verbose)
+        if lcNew === nothing
+            lcNew = lc
+            llNew = -Inf
+        else
+            llNew = ll(lcNew, data, σNew, remake(prob, p=paramMap(xNew, x))::ODEProblem)
+        end
         if verbose > 1
             println("Proposed parameters: ", xNew[1:end-1])
             println("Proposed noise: ", σNew)
             println("Proposed limit cycle: ", lcNew)
         end
         # Calculate acceptance probability
-        llNew = ll(lcNew, data, σNew, remake(prob, p=paramMap(xNew, x))::ODEProblem)
         α = min(1, exp(π(xNew) + llNew - π(x) - llOld)) # Assuming proposal kernal q(xNew|x) is symmetric
         if verbose > 1
             println("Acceptance probability: ", α)
@@ -176,9 +206,16 @@ function contSolver(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, x
     bp, prob, sol, period; alg = Tsit5(), abstol=1e-10, reltol=1e-8)
 
     bothside = xlc != x
-    brpo_sh = continuation(bpsh, cish, PALC(), opts_br;
-    verbosity = 0, bothside=bothside)
-
+    local brpo_sh::Union{Nothing, ContResult}
+    try
+        brpo_sh = continuation(bpsh, cish, PALC(), opts_br;
+            verbosity = 0, bothside=bothside)
+    catch e
+        if verbose > 0
+            println("Continuation failed: ", e)
+        end
+        return odeSolverCheap(x, prob, lc, xlc, paramMap, verbose)
+    end
     if brpo_sh.sol[end].p == 1.0
         return brpo_sh.sol[end].x[1:5]
     elseif brpo_sh.sol[1].p == 1.0
