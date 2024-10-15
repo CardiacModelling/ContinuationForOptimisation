@@ -43,7 +43,7 @@ function mcmc(numSamples::Int64, solver::Function, μ₀::Vector{Float64}, prob:
     σ = x[end]
     a = 1.0
     adaptionStart = ceil(numSamples*0.1) # Start adaptive covariance after 10% of samples
-    Σ = Hermitian(diagm(μ₀/100))
+    Σ = Hermitian(diagm(μ₀/10000))
     prob = remake(prob, p=paramMap(x, x), u0=Model.ic_conv)::ODEProblem
     lc = converge(Model.ic_conv, (ic) -> solver(x, prob, ic, x, paramMap, verbose), (ic) -> Tools.auto_converge_check(prob, ic, paramMap(x, x)), verbose)
     if lc === nothing
@@ -332,6 +332,8 @@ numSamples = 1000*5*10 # 1000 samples per parameter before adaption (10% of the 
 BenchmarkTools.DEFAULT_PARAMETERS.seconds = 100
 
 chain, accepts = mcmc(numSamples, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, odedata, paramMap, verbose)
+
+display(plot([mean(accepts[1:i]) for i in 1:numSamples], title="Acceptance rate", xlabel="Iteration", ylabel="Acceptance rate"))
 
 # Remove burn in stage
 burnIn = Int(round(numSamples*0.25))
