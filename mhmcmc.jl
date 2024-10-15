@@ -152,22 +152,22 @@ end
 
 function ll(limitCycle::Vector{Float64}, data::Vector{Float64}, σ::Float64, prob::ODEProblem)::Float64
     # Calculate the log-likelihood of the limit cycle compared with the data, and σ
-    sol = solve(prob, Tsit5(); tspan=(0.0, period*2.0), u0=limitCycle, save_idxs=Model.plot_idx, saveat=0.01, dense=false)::ODESolution
-    sol, = aligned_sol(sol, prob, period)
+    sol, = aligned_sol(limitCycle, prob, period)
     # Calculate the likelihood of the data given the limit cycle
     n = Normal(0, σ)
     return loglikelihood(n, data - sol.u)
 end
 
-function aligned_sol(sol, prob::ODEProblem, period::Float64 = 0.0; save_only_V::Bool = true)
+function aligned_sol(lc::Vector{Float64}, prob::ODEProblem, period::Float64 = 0.0; save_only_V::Bool = true)
     # Align the limit cycle in the solution to start at the max of V
     if period == 0.0
-        maxs = get_maxs(sol)
-        period = get_period(maxs)
+        period = get_period(lc, prob)
         println("Period: ", period)
     end
+    # Simulation of length 2*period
+    sol = solve(prob, Tsit5(); tspan=(0.0, period*2.0), u0=lc, save_idxs=Model.plot_idx, saveat=0.01, dense=false)::ODESolution
     t = sol.t[argmax(sol.u)]
-    sol = solve(prob, Tsit5(); tspan = (0.0,t), u0=sol.prob.u0, save_everystep=false, save_start=false) # ; tspan = (0, t), u0 = sol.prob.u0, save_everystep=false, save_start=false
+    sol = solve(prob, Tsit5(); tspan = (0.0,t), u0=sol.prob.u0, save_everystep=false, save_start=false)
     if save_only_V
         return solve(prob, Tsit5(), saveat=0.1, save_idxs=Model.plot_idx, tspan=(0.0, period), u0=sol.u[end])::ODESolution, period
     else
@@ -230,17 +230,17 @@ function contSolver(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, x
     end
 end
 
-function get_maxs(sol)::Vector{Int64}
+function get_period(lc::Vector{Float64}, prob::ODEProblem)::Float64
+    # Long simulation
+    sol = solve(prob, Tsit5(), tspan=(0.0, 50000.0), u0=lc)::ODESolution
+    # Get local maximums
     maxs = []
     for i in 2:length(sol.t)-1
-        if sol[Model.plot_idx, i] > sol[Model.plot_idx, i+1] && sol[Model.plot_idx, i] > sol[Model.plot_idx, i-1]
+        if sol[1, i] > sol[1, i+1] && sol[1, i] > sol[1, i-1]
             push!(maxs, i)
         end
     end
-    return maxs
-end
-
-function get_period(maxs::Vector{Int64})::Float64
+    # Get average period
     pulse_widths = [sol.t[maxs[i]]-sol.t[maxs[i-1]] for i in 2:length(maxs)]
     period = mean(pulse_widths)
     return period
@@ -311,8 +311,7 @@ prob_true = remake(prob, p=pTrue)::ODEProblem
 sol = solve(prob_true, Tsit5())::ODESolution
 display(plot(sol, idxs=Model.slow_idx, title="Check limit cycle is converged for true data"))
 #   Generate aligned data
-sol = solve(prob_true, Tsit5(), u0=sol[end], tspan=(0.0, 100.0))::ODESolution
-sol_pulse, period = aligned_sol(sol, prob_true,)
+sol_pulse, period = aligned_sol(sol[end], prob_true,)
 #   Add noise and plot
 odedata = Array(sol_pulse.u) + 2.0 * randn(size(sol_pulse))
 plot(sol_pulse, title="True data"; label="Simulation")
