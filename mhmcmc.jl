@@ -282,8 +282,8 @@ end
 
 const use_continuation = true
 const use_fast_ode = true
-const verbose = 1
-dataTime = 100.0 # 50000.0 for final results
+verbose = 2
+dataTime = 50000.0 # 50000.0 for final results
 if use_continuation
     println("Using continuation")
     paramMap(x,y) = param_map_cont(x,y)
@@ -294,7 +294,7 @@ if use_continuation
     const bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, Model.params_cont, lens)
     solver(v, w, x, y, z, verbose) = contSolver(v, w, x, y, z, bp, verbose)
     const opts_br = ContinuationPar(p_min = 0.0, p_max = 1.0, max_steps = 150, tol_stability = 1e-8, ds=1.0, dsmax=1.0, 
-    detect_bifurcation=0, detect_fold=false,)
+    dsmin=1e-6, detect_bifurcation=0, detect_fold=false,)
 else
     println("Using ODE solver")
     paramMap(x, _) = param_map(x)
@@ -329,29 +329,24 @@ display(plot!(sol_pulse.t, odedata, label="Data"))
 
 println("Log likelihood of true parameters: ", ll(sol.u[end], odedata, 2.0, prob_true))
 numSamples = 1000*5*10 # 1000 samples per parameter before adaption (10% of the samples)
-BenchmarkTools.DEFAULT_PARAMETERS.seconds = 1
-BenchmarkTools.DEFAULT_PARAMETERS.samples = 1
-BenchmarkTools.DEFAULT_PARAMETERS.evals = 1
+BenchmarkTools.DEFAULT_PARAMETERS.seconds = 100
 
-@benchmark mcmc(30, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, odedata, paramMap, verbose)
-#@profview mcmc(20, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, odedata, paramMap, verbose)
+chain = mcmc(numSamples, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, odedata, paramMap, verbose)
 
-# TODO: How long should ode solver be run for? Check how long it takes to converge max step of perturbation kernal
+# Remove burn in stage
+burnIn = Int(round(numSamples*0.25))
+posterior = chain[burnIn+1:end, :]
 
-# # Remove burn in stage
-# burnIn = Int(round(numSamples*0.25))
-# posterior = chain[burnIn+1:end, :]
+# Plot posterior
+paramNames = ["gna" "gk" "gs" "gl" "σ"]
+for i in axes(posterior, 2)
+    histogram(posterior[:, i], normalize=:pdf)
+    if i == size(posterior, 2)
+        title!("Noise")
+    else
+        title!("Parameter "*paramNames[i])
+    end
+    display(ylabel!("P(x)"))
+end
 
-# # Plot posterior
-# paramNames = ["gna" "gk" "gs" "gl" "σ"]
-# for i in axes(posterior, 2)
-#     histogram(posterior[:, i], normalize=:pdf)
-#     if i == size(posterior, 2)
-#         title!("Noise")
-#     else
-#         title!("Parameter "*paramNames[i])
-#     end
-#     display(ylabel!("P(x)"))
-# end
-
-# plot((chain'./[110.0, 11.0, 12.0, 0.25, 2.0])', label=paramNames, title="Parameter and noise convergence", xlabel="Iteration", ylabel="Parameter value (relative to true)")
+plot((chain'./[110.0, 11.0, 12.0, 0.25, 2.0])', label=paramNames, title="Parameter and noise convergence", xlabel="Iteration", ylabel="Parameter value (relative to true)")
