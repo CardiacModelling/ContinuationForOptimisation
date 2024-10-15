@@ -104,7 +104,7 @@ function mcmc(numSamples::Integer, solver::Function, μ₀::Vector{Float64}, pro
             lcNew = lc
             llNew = -Inf
         else
-            llNew = ll(lcNew, data, σNew, remake(prob, p=paramMap(xNew, x))::ODEProblem, verbose)
+            llNew = ll(lcNew, data, σNew, remake(prob, p=paramMap(xNew, xNew))::ODEProblem, verbose)
             if verbose > 2
                 sol, = aligned_sol(lc, remake(prob, p=paramMap(x, x)), period)
                 display(plot!(sol, label="Old"))
