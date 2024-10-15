@@ -237,24 +237,17 @@ end
 
 Align the limit cycle in the solution to start at the max of V and fixes the timesteps for recording the data.
 
-If the period is not specified, it will be calculated.
-
 # Arguments
 - `lc::Vector{Float64}`: The limit cycle to align.
 - `prob::ODEProblem`: The ODEProblem for the model.
-- `period::Number=0.0`: The period of the data.
+- `period::Number`: The period of the data.
 - `save_only_V::Bool=true`: Save only the V (voltage) variable.
 
 # Returns
 - `sol::ODESolution`: The aligned solution.
 - `period::Number`: The period of the limit cycle.
 """
-function aligned_sol(lc::Vector{Float64}, prob::ODEProblem, period::Number = 0.0; save_only_V::Bool = true)
-    # Get the period if undefined
-    if period == 0.0
-        period = get_period(lc, prob)
-        println("Period: ", period)
-    end
+function aligned_sol(lc::Vector{Float64}, prob::ODEProblem, period::Number; save_only_V::Bool = true)
     # Simulation of length 2*period to find the max of V
     sol = solve(prob, Tsit5(); tspan=(0.0, period*2.0), u0=lc, save_idxs=Model.plot_idx, saveat=0.01, dense=false)::ODESolution
     # Find the time where V is maximised
@@ -497,7 +490,8 @@ else
 end
 
 # Generate aligned data
-sol_pulse, const period = aligned_sol(sol[end], prob_true,)
+const period = get_period(sol[end], prob_true)
+sol_pulse, _ = aligned_sol(sol[end], prob_true, period)
 # Add noise and plot
 odedata = Array(sol_pulse.u) + 2.0 * randn(size(sol_pulse))
 plot(sol_pulse, title="True data"; label="Simulation")
