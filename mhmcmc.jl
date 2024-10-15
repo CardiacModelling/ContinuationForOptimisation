@@ -286,7 +286,7 @@ Solve the ODE until convergence starting from the default initial conditions.
 """
 function odeSolverFull(x::Vector{Number}, prob::ODEProblem, _::Vector{Number}, xlc::Vector{Number}, paramMap::Function, verbose=1::Integer)::Vector{Number}
     prob = remake(prob, p=paramMap(x, xlc))::ODEProblem
-    tmp = solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 50000.0), p=paramMap(x, xlc), save_start=false)::ODESolution
+    tmp = solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 50000.0), p=paramMap(x, x), save_start=false)::ODESolution
     return tmp[end]
 end
 
@@ -308,7 +308,7 @@ Solve the ODE until convergence but starting from the previous limit cycle.
 """
 function odeSolverCheap(x::Vector{Number}, prob::ODEProblem, lc::Vector{Number}, _::Vector{Number}, paramMap::Function, verbose::Integer)::Vector{Number}
     # Solve the ODE until convergence but starting from the previous limit cycle
-    tmp = solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 10000.0), p=paramMap(x, xlc), u0=lc, save_start=false)::ODESolution
+    tmp = solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 10000.0), p=paramMap(x, x), u0=lc, save_start=false)::ODESolution
     return tmp[end]
 end
 
