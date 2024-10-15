@@ -70,7 +70,7 @@ function mcmc(numSamples::Integer, solver::Function, μ₀::Vector{Number}, prob
     x = copy(μ₀)
     σ = x[end]
     a = 1.0
-    adaptionStart = ceil(numSamples*0.1) # Start adaptive covariance after 10% of samples
+    adaptionStart = ceil(Int, numSamples*0.1) # Start adaptive covariance after 10% of samples
     Σ = Hermitian(diagm(μ₀/10000))
     prob = remake(prob, p=paramMap(x, x), u0=Model.ic_conv)::ODEProblem
     lc = converge(Model.ic_conv, (ic) -> solver(x, prob, ic, x, paramMap, verbose), (ic) -> Tools.auto_converge_check(prob, ic, paramMap(x, x)), verbose)
@@ -152,9 +152,9 @@ function mcmc(numSamples::Integer, solver::Function, μ₀::Vector{Number}, prob
             γ = (s+1)^-0.6
             Σ = Hermitian((1-γ)*Σ + γ*(x - μ₀)*(x - μ₀)')
             μ₀ = (1-γ)*μ₀ + γ*x
-            a *= exp(γ*(sum(accepts[Int(adaptionStart)+1:i])/s - 0.25))
+            a *= exp(γ*(sum(accepts[adaptionStart+1:i])/s - 0.25))
             if verbose > 0
-                println("Current adaption acceptance rate: ", sum(accepts[Int(adaptionStart)+1:i])/s)
+                println("Current adaption acceptance rate: ", sum(accepts[adaptionStart+1:i])/s)
             end
             if verbose > 1
                 println("Adaption step: ", s)
@@ -495,7 +495,7 @@ chain, accepts = mcmc(numSamples, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, o
 display(plot([mean(accepts[1:i]) for i in 1:numSamples], title="Acceptance rate", xlabel="Iteration", ylabel="Acceptance rate"))
 
 # Remove burn in stage
-burnIn = Int(round(numSamples*0.25))
+burnIn = round(Int, numSamples*0.25)
 posterior = chain[burnIn+1:end, :]
 
 # Plot posterior
