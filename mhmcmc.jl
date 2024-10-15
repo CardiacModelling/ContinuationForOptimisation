@@ -152,9 +152,9 @@ function mcmc(numSamples::Integer, solver::Function, μ₀::Vector{Number}, prob
             γ = (s+1)^-0.6
             Σ = Hermitian((1-γ)*Σ + γ*(x - μ₀)*(x - μ₀)')
             μ₀ = (1-γ)*μ₀ + γ*x
-            a *= exp(γ*(sum(accepts[adaptionStart+1:i])/s - 0.25))
+            a *= exp(γ*(sum(accepts)/i - 0.25))
             if verbose > 0
-                println("Current adaption acceptance rate: ", sum(accepts[adaptionStart+1:i])/s)
+                println("Current acceptance rate: ", sum(accepts)/i*100, "%")
             end
             if verbose > 1
                 println("Adaption step: ", s)
