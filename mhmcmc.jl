@@ -479,6 +479,12 @@ pTrue = @set pTrue.gl = 0.25
 prob_true = remake(prob, p=pTrue)::ODEProblem
 sol = solve(prob_true, Tsit5())::ODESolution
 display(plot(sol, idxs=Model.slow_idx, title="Check limit cycle is converged for true data"))
+if Tools.auto_converge_check(prob_true, sol[end], pTrue)
+    println("Data is appropriately converged")
+else
+    println("Data was NOT generated from a converged limit cycle")
+end
+
 #   Generate aligned data
 sol_pulse, period = aligned_sol(sol[end], prob_true,)
 #   Add noise and plot
