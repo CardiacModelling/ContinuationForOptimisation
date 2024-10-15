@@ -62,9 +62,7 @@ Run an adaptive Metropolis-Hastings MCMC to find the posterior distribution of t
 - `accepts::Vector{Number}`: The acceptance rate of the proposals.
 """
 function mcmc(numSamples::Integer, solver::Function, μ₀::Vector{Number}, prob::ODEProblem, data::Vector{Number}, paramMap::Function, verbose::Integer=1)
-    # verbose : int
-    #     The verbosity level. 0 is silent, 1 is minimal, 2 is standard, 3 is debug
-    # Set up
+    # Set up and preallocate variables
     chain = zeros(numSamples, length(μ₀))
     accepts = zeros(numSamples)
     x = copy(μ₀)
@@ -100,7 +98,7 @@ function mcmc(numSamples::Integer, solver::Function, μ₀::Vector{Number}, prob
         # Sample from proposal
         xNew = q(x, a*Σ)
         σNew = xNew[end]
-        # Solve with new parameters
+        # Solve with new parameters and get log likelihood
         lcNew = converge(lc, (ic) -> solver(xNew, prob, ic, x, paramMap, verbose), (ic) -> Tools.auto_converge_check(prob, ic, paramMap(xNew, xNew)), verbose)
         if lcNew === nothing
             lcNew = lc
@@ -144,6 +142,7 @@ function mcmc(numSamples::Integer, solver::Function, μ₀::Vector{Number}, prob
             println("Local acceptance rate: ", sum(accepts[i-99:i]), "%")
         end
         chain[i, :] = x
+        # Adapt the proposal distribution
         if i == adaptionStart + 1 && verbose > 0
             println("Adaption started")
         end
@@ -183,7 +182,6 @@ Perturb state `x` to get a new state `xNew` and return it.
 - `xNew::Vector{Number}`: The new state.
 """
 function q(x::Vector{Number}, Σ::Hermitian{Number})::Vector{Number}
-    # Perturb state x to get a new state xNew and return it
     d = MvNormal(x, Σ)
     return rand(d)
 end
@@ -223,9 +221,9 @@ Calculate the log-likelihood of the limit cycle compared with the data, and σ.
 - `ll::Number`: The log-likelihood.
 """
 function ll(limitCycle::Vector{Number}, data::Vector{Number}, σ::Number, prob::ODEProblem, verbose = 1)::Number
-    # Calculate the log-likelihood of the limit cycle compared with the data, and σ
+    # Get estimate of data using parameters from p and the limit cycle
     sol, = aligned_sol(limitCycle, prob, period)
-    # Calculate the likelihood of the data given the limit cycle
+    # Calculate the log-likelihood of the data
     n = Normal(0, σ)
     if verbose > 2
         plot(sol, label="Proposed")
@@ -252,15 +250,18 @@ If the period is not specified, it will be calculated.
 - `period::Number`: The period of the limit cycle.
 """
 function aligned_sol(lc::Vector{Number}, prob::ODEProblem, period::Number = 0.0; save_only_V::Bool = true)
-    # Align the limit cycle in the solution to start at the max of V
+    # Get the period if undefined
     if period == 0.0
         period = get_period(lc, prob)
         println("Period: ", period)
     end
-    # Simulation of length 2*period
+    # Simulation of length 2*period to find the max of V
     sol = solve(prob, Tsit5(); tspan=(0.0, period*2.0), u0=lc, save_idxs=Model.plot_idx, saveat=0.01, dense=false)::ODESolution
+    # Find the time where V is maximised
     t = sol.t[argmax(sol.u)]
+    # Find the states at that time
     sol = solve(prob, Tsit5(); tspan = (0.0,t), u0=sol.prob.u0, save_everystep=false, save_start=false)
+    # Get the aligned solution
     if save_only_V
         return solve(prob, Tsit5(), saveat=0.1, save_idxs=Model.plot_idx, tspan=(0.0, period), u0=sol.u[end])::ODESolution, period
     else
@@ -284,8 +285,7 @@ Solve the ODE until convergence starting from the default initial conditions.
 # Returns
 - `lc::Vector{Number}`: The converged limit cycle.
 """
-function odeSolverFull(x::Vector{Number}, prob::ODEProblem, _::Vector{Number}, xlc::Vector{Number}, paramMap::Function, verbose=1::Integer)::Vector{Number}
-    prob = remake(prob, p=paramMap(x, xlc))::ODEProblem
+function odeSolverFull(x::Vector{Number}, prob::ODEProblem, _::Vector{Number}, _::Vector{Number}, paramMap::Function, verbose=1::Integer)::Vector{Number}
     tmp = solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 50000.0), p=paramMap(x, x), save_start=false)::ODESolution
     return tmp[end]
 end
@@ -307,7 +307,6 @@ Solve the ODE until convergence but starting from the previous limit cycle.
 - `lc::Vector{Number}`: The converged limit cycle.
 """
 function odeSolverCheap(x::Vector{Number}, prob::ODEProblem, lc::Vector{Number}, _::Vector{Number}, paramMap::Function, verbose::Integer)::Vector{Number}
-    # Solve the ODE until convergence but starting from the previous limit cycle
     tmp = solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 10000.0), p=paramMap(x, x), u0=lc, save_start=false)::ODESolution
     return tmp[end]
 end
@@ -330,16 +329,18 @@ Perform continuation on the ODE to get the limit cycle.
 - `lc::Vector{Number}`: The converged limit cycle.
 """
 function contSolver(x::Vector{Number}, prob::ODEProblem, lc::Vector{Number}, xlc::Vector{Number}, paramMap::Function, bp::BifurcationProblem, verbose::Integer)::Vector{Number}
-    # Remake BP and prob
+    # Remake BP and prob with the new parameters and limit cycle initial condition
     bp = re_make(bp; u0=lc, params=paramMap(x, xlc))::BifurcationProblem
     prob = remake(prob, u0=lc, p=paramMap(x, xlc))::ODEProblem
     # Create a solution using the previous limit cycle
     sol = solve(prob, Tsit5(), tspan=(0.0, 50.0))::ODESolution
-    # Shooting method
+    # Get the shooting problem
     bpsh, cish = BifurcationKit.generate_ci_problem(ShootingProblem(M=1),
     bp, prob, sol, period; alg = Tsit5(), abstol=1e-10, reltol=1e-8)
 
+    # If we actually need to do continuation (rather than just refining the limit cycle), then we need to check both sides
     bothside = xlc != x
+    # Catch any errors from BifurcationKit and fall back to ODE solver
     local brpo_sh::Union{Nothing, ContResult}
     try
         brpo_sh = continuation(bpsh, cish, PALC(), opts_br;
@@ -350,6 +351,7 @@ function contSolver(x::Vector{Number}, prob::ODEProblem, lc::Vector{Number}, xlc
         end
         return odeSolverCheap(x, prob, lc, xlc, paramMap, verbose)
     end
+    # Check if the continuation was successful (the parameter step was 1), if not fall back to ODE solver
     if brpo_sh.sol[end].p == 1.0
         return brpo_sh.sol[end].x[1:5]
     elseif brpo_sh.sol[1].p == 1.0
@@ -386,7 +388,7 @@ function get_period(lc::Vector{Number}, prob::ODEProblem)::Number
             push!(maxs, i)
         end
     end
-    # Get average period
+    # Get average period (time between maxs)
     pulse_widths = [sol.t[maxs[i]]-sol.t[maxs[i-1]] for i in 2:length(maxs)]
     period = mean(pulse_widths)
     return period
@@ -404,7 +406,9 @@ Map the parameters from a `Vector` to a `NamedTuple`.
 - `par::NamedTuple`: The parameters as a `NamedTuple`.
 """
 function param_map(x::Vector{Number})::NamedTuple{(:gna, :gk, :gs, :gl), Tuple{Number, Number, Number, Number}}
+    # Load global const parameters p
     par = p
+    # Set the parameters from the state x
     par = @set par.gna = x[1]
     par = @set par.gk = x[2]
     par = @set par.gs = x[3]
@@ -427,11 +431,14 @@ Specific to the continuation solver.
 - `par::NamedTuple`: The parameters as a `NamedTuple`.
 """
 function param_map(x::Vector{Number}, xlc::Vector{Number})::NamedTuple{(:gna, :gk, :gs, :gl, :gna_step, :gk_step, :gs_step, :gl_step, :step), Tuple{Number, Number, Number, Number, Number, Number, Number, Number, Number}}
+    # Load global const parameters p
     par = p
+    # Set the parameters from the state xlc (starting location for continuation)
     par = @set par.gna = xlc[1]
     par = @set par.gk = xlc[2]
     par = @set par.gs = xlc[3]
     par = @set par.gl = xlc[4]
+    # Set the continuation step sizes
     par = @set par.gna_step = x[1] - xlc[1]
     par = @set par.gk_step = x[2] - xlc[2]
     par = @set par.gs_step = x[3] - xlc[3]
@@ -439,10 +446,13 @@ function param_map(x::Vector{Number}, xlc::Vector{Number})::NamedTuple{(:gna, :g
     return par
 end
 
+# Method selection and settings
 const use_continuation = true
 const use_fast_ode = true
 verbose = 2
-dataTime = 50000.0 # 50000.0 for final results
+# Time to run the ODE for the data
+dataTime = 50000.0
+# Define the method specific settings and functions for MCMC
 if use_continuation
     println("Using continuation")
     paramMap(x,y) = param_map(x,y)
@@ -468,14 +478,15 @@ else
     end
 end
 
-# Parameters we will try to fit to
+# Create the true data
+# True parameters
 pTrue = p
 pTrue = @set pTrue.gna = 110.0
 pTrue = @set pTrue.gk = 11.0
 pTrue = @set pTrue.gs = 12.0
 pTrue = @set pTrue.gl = 0.25
-# Create data
-#   Run ODE to converged limit cycle
+
+# Run ODE to converged limit cycle
 prob_true = remake(prob, p=pTrue)::ODEProblem
 sol = solve(prob_true, Tsit5())::ODESolution
 display(plot(sol, idxs=Model.slow_idx, title="Check limit cycle is converged for true data"))
@@ -485,26 +496,28 @@ else
     println("Data was NOT generated from a converged limit cycle")
 end
 
-#   Generate aligned data
-sol_pulse, period = aligned_sol(sol[end], prob_true,)
-#   Add noise and plot
+# Generate aligned data
+sol_pulse, const period = aligned_sol(sol[end], prob_true,)
+# Add noise and plot
 odedata = Array(sol_pulse.u) + 2.0 * randn(size(sol_pulse))
 plot(sol_pulse, title="True data"; label="Simulation")
 display(plot!(sol_pulse.t, odedata, label="Data"))
 
+# Check the log likelihood of the true parameters
 println("Log likelihood of true parameters: ", ll(sol.u[end], odedata, 2.0, prob_true))
-numSamples = 1000*5*10 # 1000 samples per parameter before adaption (10% of the samples)
-BenchmarkTools.DEFAULT_PARAMETERS.seconds = 100
 
+# Run MCMC
+numSamples = 1000*5*10 # 1000 samples per parameter before adaption (10% of the samples)
 chain, accepts = mcmc(numSamples, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, odedata, paramMap, verbose)
 
+# Plot acceptance rate
 display(plot([mean(accepts[1:i]) for i in 1:numSamples], title="Acceptance rate", xlabel="Iteration", ylabel="Acceptance rate"))
 
-# Remove burn in stage
+# Remove burn in stage to get posterior distribution
 burnIn = round(Int, numSamples*0.25)
 posterior = chain[burnIn+1:end, :]
 
-# Plot posterior
+# Plot posterior histograms
 paramNames = ["gna" "gk" "gs" "gl" "σ"]
 for i in axes(posterior, 2)
     histogram(posterior[:, i], normalize=:pdf)
@@ -516,4 +529,9 @@ for i in axes(posterior, 2)
     display(ylabel!("P(x)"))
 end
 
+# Plot parameter convergence
 plot((chain'./[110.0, 11.0, 12.0, 0.25, 2.0])', label=paramNames, title="Parameter and noise convergence", xlabel="Iteration", ylabel="Parameter value (relative to true)")
+
+# Benchmark the MCMC
+b = @benchmarkable mcmc($numSamples, $solver, [120.0, 13.0, 10.0, 0.3, 1.5], $prob, $odedata, $paramMap, $verbose)
+run(b, samples=1)
