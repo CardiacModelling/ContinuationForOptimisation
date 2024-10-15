@@ -141,7 +141,7 @@ function mcmc(numSamples::Integer, solver::Function, μ₀::Vector{Number}, prob
             accepts[i] = 0
         end
         if verbose > 0 && i > 100
-            println("Local acceptance rate (%): ", sum(accepts[i-100:i]))
+            println("Local acceptance rate: ", sum(accepts[i-99:i]), "%")
         end
         chain[i, :] = x
         if i == adaptionStart + 1 && verbose > 0
