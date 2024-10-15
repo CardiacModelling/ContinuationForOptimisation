@@ -35,7 +35,7 @@ end
 
 function mcmc(numSamples::Int64, solver::Function, μ₀::Vector{Float64}, prob::ODEProblem, data::Vector{Float64}, paramMap::Function, verbose::Int64=1)
     # verbose : int
-    #     The verbosity level. 0 is silent, 1 is standard, 2 is debug
+    #     The verbosity level. 0 is silent, 1 is minimal, 2 is standard, 3 is debug
     # Set up
     chain = zeros(numSamples, length(μ₀))
     accepts = zeros(numSamples)
@@ -64,10 +64,10 @@ function mcmc(numSamples::Int64, solver::Function, μ₀::Vector{Float64}, prob:
     # Iterate through MCMC steps
     for i in 1:numSamples
         if verbose > 0
-        println("========         Iteration ", i, "         ========")
-        println("Current parameters: ", x[1:end-1])
-        println("Current noise: ", σ)
-        println("Current limit cycle: ", lc)
+            println("========         Iteration ", i, "         ========")
+            println("Current parameters: ", x[1:end-1])
+            println("Current noise: ", σ)
+            println("Current limit cycle: ", lc)
         end
         # Sample from proposal
         xNew = q(x, a*Σ)
@@ -78,7 +78,11 @@ function mcmc(numSamples::Int64, solver::Function, μ₀::Vector{Float64}, prob:
             lcNew = lc
             llNew = -Inf
         else
-            llNew = ll(lcNew, data, σNew, remake(prob, p=paramMap(xNew, x))::ODEProblem)
+            llNew = ll(lcNew, data, σNew, remake(prob, p=paramMap(xNew, x))::ODEProblem, verbose)
+            if verbose > 2
+                sol, = aligned_sol(lc, remake(prob, p=paramMap(x, x)), period)
+                display(plot!(sol, label="Old"))
+            end
         end
         if verbose > 1
             println("Proposed parameters: ", xNew[1:end-1])
@@ -126,6 +130,8 @@ function mcmc(numSamples::Int64, solver::Function, μ₀::Vector{Float64}, prob:
             end
             if verbose > 1
                 println("Adaption step: ", s)
+            end
+            if verbose > 2
                 println("γ: ", γ)
                 println("Σ: ", Σ)
                 println("μ₀: ", μ₀)
@@ -150,11 +156,15 @@ function π(x::Vector{Float64})::Float64
     return logpdf(ig, x[end])
 end
 
-function ll(limitCycle::Vector{Float64}, data::Vector{Float64}, σ::Float64, prob::ODEProblem)::Float64
+function ll(limitCycle::Vector{Float64}, data::Vector{Float64}, σ::Float64, prob::ODEProblem, verbose = 1)::Float64
     # Calculate the log-likelihood of the limit cycle compared with the data, and σ
     sol, = aligned_sol(limitCycle, prob, period)
     # Calculate the likelihood of the data given the limit cycle
     n = Normal(0, σ)
+    if verbose > 2
+        plot(sol, label="Proposed")
+        plot!(sol.t, data, label="Data")
+    end
     return loglikelihood(n, data - sol.u)
 end
 
