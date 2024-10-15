@@ -139,7 +139,7 @@ function mcmc(numSamples::Int64, solver::Function, μ₀::Vector{Float64}, prob:
             end
         end
     end
-    return chain
+    return chain, accepts
 end
 
 function q(x::Vector{Float64}, Σ::Hermitian{Float64})::Vector{Float64}
@@ -331,7 +331,7 @@ println("Log likelihood of true parameters: ", ll(sol.u[end], odedata, 2.0, prob
 numSamples = 1000*5*10 # 1000 samples per parameter before adaption (10% of the samples)
 BenchmarkTools.DEFAULT_PARAMETERS.seconds = 100
 
-chain = mcmc(numSamples, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, odedata, paramMap, verbose)
+chain, accepts = mcmc(numSamples, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, odedata, paramMap, verbose)
 
 # Remove burn in stage
 burnIn = Int(round(numSamples*0.25))
