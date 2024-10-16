@@ -3,6 +3,7 @@
 using Distributions, LinearAlgebra
 using Parameters, Plots, ConstructionBase, Revise, Setfield
 using BifurcationKit, DifferentialEquations, BenchmarkTools
+using CSV, Tables
 
 include("./model.jl")
 using .Model
@@ -525,6 +526,11 @@ end
 
 # Plot parameter convergence
 plot((chain'./[110.0, 11.0, 12.0, 0.25, 2.0])', label=paramNames, title="Parameter and noise convergence", xlabel="Iteration", ylabel="Parameter value (relative to true)")
+
+# Write data to CSV
+tab = Tables.table([chain convert(Vector{Bool}, accepts)]; header=[paramNames..., "Accept"])
+filename = use_continuation ? "cont_" : (use_fast_ode ? "fastODE_" : "fullODE") * "chain.csv"
+CSV.write(filename, tab)
 
 # Benchmark the MCMC
 b = @benchmarkable mcmc($numSamples, $solver, [120.0, 13.0, 10.0, 0.3, 1.5], $prob, $odedata, $paramMap, $verbose)
