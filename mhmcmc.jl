@@ -443,6 +443,7 @@ end
 # Method selection and settings
 const use_continuation = true
 const use_fast_ode = true
+file_type = use_continuation ? "cont_" : (use_fast_ode ? "fastODE_" : "fullODE")
 verbose = 2
 # Time to run the ODE for the data
 dataTime = 50000.0
@@ -505,32 +506,42 @@ println("Log likelihood of true parameters: ", ll(sol.u[end], odedata, 2.0, prob
 numSamples = 1000*5*10 # 1000 samples per parameter before adaption (10% of the samples)
 chain, accepts = mcmc(numSamples, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, odedata, paramMap, verbose)
 
+# Plot results
+plot_params = (linewidth=2., dpi=300, size=(450,300))
+
 # Plot acceptance rate
-display(plot([mean(accepts[1:i]) for i in 1:numSamples], title="Acceptance rate", xlabel="Iteration", ylabel="Acceptance rate"))
+plot([mean(accepts[1:i]) for i in 1:numSamples], title="Acceptance Rate", xlabel="Iteration", ylabel="Cumulative Acceptance Rate",
+ylim=(0,1), label="Acceptance Rate", xlim = (1,numSamples); plot_params...)
+vline!([numSamples*0.25+0.5], label="Burn In", color=:red, linewidth=1.5, linestyle=:dot)
+vline!([numSamples*0.1+0.5], label="Adaption", color=:green, linewidth=1.5, linestyle=:dot)
+savefig(file_type*"acceptance.pdf")
 
 # Remove burn in stage to get posterior distribution
 burnIn = round(Int, numSamples*0.25)
 posterior = chain[burnIn+1:end, :]
 
 # Plot posterior histograms
-paramNames = ["gna" "gk" "gs" "gl" "σ"]
+paramNames = ["gNa" "gK" "gS" "gL" "σ"]
+pTrueWithNoise = [pTrue..., 2.0]
 for i in axes(posterior, 2)
-    histogram(posterior[:, i], normalize=:pdf)
-    if i == size(posterior, 2)
-        title!("Noise")
-    else
-        title!("Parameter "*paramNames[i])
-    end
-    display(ylabel!("P(x)"))
+    histogram(posterior[:, i], normalize=:pdf, title = "Posterior: "*paramNames[i], ylabel = "P(x)",
+    legend = false; plot_params...)
+    vline!([pTrueWithNoise[i]], color=:black, linewidth=1.5)
+    savefig(file_type*"posterior-"*paramNames[i]*".pdf")
 end
 
 # Plot parameter convergence
-plot((chain'./[110.0, 11.0, 12.0, 0.25, 2.0])', label=paramNames, title="Parameter and noise convergence", xlabel="Iteration", ylabel="Parameter value (relative to true)")
+plot((chain'./pTrueWithNoise)', label=paramNames, title="Parameter Convergence", 
+xlabel="Iteration", ylabel="Parameter Value (Relative to Truth)", xlim=(1,numSamples); 
+plot_params...)
+hline!([1.0], label="Truth", color=:black, linewidth=1.5)
+vline!([numSamples*0.25+0.5], label="Burn In", color=:red, linewidth=1.5, linestyle=:dot)
+vline!([numSamples*0.1+0.5], label="Adaption", color=:green, linewidth=1.5, linestyle=:dot)
+savefig(file_type*"convergence.pdf")
 
 # Write data to CSV
 tab = Tables.table([chain convert(Vector{Bool}, accepts)]; header=[paramNames..., "Accept"])
-filename = use_continuation ? "cont_" : (use_fast_ode ? "fastODE_" : "fullODE") * "chain.csv"
-CSV.write(filename, tab)
+CSV.write(file_type*"chain.csv", tab)
 
 # Benchmark the MCMC
 b = @benchmarkable mcmc($numSamples, $solver, [120.0, 13.0, 10.0, 0.3, 1.5], $prob, $odedata, $paramMap, $verbose)
