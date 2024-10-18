@@ -1,9 +1,8 @@
 # Metropolis Hastings MCMC to be used for both ODE solver and continuation solver
 # Also stores and passes the current limit cycle to the next iteration
-using Distributions, LinearAlgebra
-using Parameters, Plots, ConstructionBase, Revise, Setfield
+using Distributions, LinearAlgebra, Setfield
 using BifurcationKit, DifferentialEquations, BenchmarkTools
-using CSV, Tables
+using CSV, Tables, Plots
 
 include("./model.jl")
 using .Model
