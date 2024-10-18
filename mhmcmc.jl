@@ -483,7 +483,8 @@ pTrue = @set pTrue.gl = 0.25
 # Run ODE to converged limit cycle
 prob_true = remake(prob, p=pTrue)::ODEProblem
 sol = solve(prob_true, Tsit5())::ODESolution
-display(plot(sol, idxs=Model.slow_idx, title="Check limit cycle is converged for true data"))
+plot(sol, idxs=Model.slow_idx, title="Check limit cycle is converged for true data")
+savefig(file_type*"check_converged_mcmc.pdf")
 if Tools.auto_converge_check(prob_true, sol[end], pTrue)
     println("Data is appropriately converged")
 else
