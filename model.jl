@@ -4,7 +4,6 @@ using Parameters
 using BifurcationKit
 
 export ode!, params, ic, ic_conv, slow_idx, plot_idx, cont_params
-# TODO: Optimise the ode function call, minimise memory allocations
 
 function ode!(dz, z, p, t=0)
     am1, am2, am3, bm1, bm2, bm3, ah1, ah2, ah3, bh1, bh2, Ena, an1, an2, an3, bn1, bn2, bn3, 
