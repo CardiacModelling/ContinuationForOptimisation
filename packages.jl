@@ -1,11 +1,16 @@
 using Pkg
 Pkg.add([
-    "BifurcationKit",
-    "DifferentialEquations",
+    "Distributions",
+    "LinearAlgebra",
     "Parameters",
     "Plots",
-    "ConstructionBase",
-    "ModelingToolkit",
-    "CellMLToolkit",
+    "Setfield",
+    "BifurcationKit",
+    "DifferentialEquations",
+    "BenchmarkTools",
+    "CSV",
+    "Tables",
+    "BenchmarkPlots",
+    "StatsPlots"
     ]
 )
