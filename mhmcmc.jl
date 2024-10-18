@@ -1,6 +1,6 @@
 # Metropolis Hastings MCMC to be used for both ODE solver and continuation solver
 # Also stores and passes the current limit cycle to the next iteration
-using Distributions, LinearAlgebra, Setfield
+using Distributions, LinearAlgebra
 using BifurcationKit, DifferentialEquations, BenchmarkTools
 using CSV, Tables, Plots
 
@@ -249,16 +249,16 @@ Align the limit cycle in the solution to start at the max of V and fixes the tim
 """
 function aligned_sol(lc::Vector{Float64}, prob::ODEProblem, period::Number; save_only_V::Bool = true)
     # Simulation of length 2*period to find the max of V
-    sol = solve(prob, Tsit5(); tspan=(0.0, period*2.0), u0=lc, save_idxs=Model.plot_idx, saveat=0.01, dense=false)::ODESolution
+    sol = DifferentialEquations.solve(prob, Tsit5(); tspan=(0.0, period*2.0), u0=lc, save_idxs=Model.plot_idx, saveat=0.01, dense=false)::ODESolution
     # Find the time where V is maximised
     t = sol.t[argmax(sol.u)]
     # Find the states at that time
-    sol = solve(prob, Tsit5(); tspan = (0.0,t), u0=sol.prob.u0, save_everystep=false, save_start=false)
+    sol = DifferentialEquations.solve(prob, Tsit5(); tspan = (0.0,t), u0=sol.prob.u0, save_everystep=false, save_start=false)
     # Get the aligned solution
     if save_only_V
-        return solve(prob, Tsit5(), saveat=0.1, save_idxs=Model.plot_idx, tspan=(0.0, period), u0=sol.u[end])::ODESolution, period
+        return DifferentialEquations.solve(prob, Tsit5(), saveat=0.1, save_idxs=Model.plot_idx, tspan=(0.0, period), u0=sol.u[end])::ODESolution, period
     else
-        return solve(prob, Tsit5(), saveat=0.1, tspan=(0.0, period), u0=sol.u[end])::ODESolution, period
+        return DifferentialEquations.solve(prob, Tsit5(), saveat=0.1, tspan=(0.0, period), u0=sol.u[end])::ODESolution, period
     end
 end
 
@@ -279,7 +279,7 @@ Solve the ODE until convergence starting from the default initial conditions.
 - `lc::Vector{Float64}`: The converged limit cycle.
 """
 function odeSolverFull(x::Vector{Float64}, prob::ODEProblem, ::Vector{Float64}, ::Vector{Float64}, paramMap::Function, verbose=1::Integer)::Vector{Float64}
-    tmp = solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 50000.0), p=paramMap(x, x), save_start=false)::ODESolution
+    tmp = DifferentialEquations.solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 50000.0), p=paramMap(x, x), save_start=false)::ODESolution
     return tmp[end]
 end
 
@@ -300,7 +300,7 @@ Solve the ODE until convergence but starting from the previous limit cycle.
 - `lc::Vector{Float64}`: The converged limit cycle.
 """
 function odeSolverCheap(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, ::Vector{Float64}, paramMap::Function, verbose::Integer)::Vector{Float64}
-    tmp = solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 10000.0), p=paramMap(x, x), u0=lc, save_start=false)::ODESolution
+    tmp = DifferentialEquations.solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 10000.0), p=paramMap(x, x), u0=lc, save_start=false)::ODESolution
     return tmp[end]
 end
 
@@ -326,7 +326,7 @@ function contSolver(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, x
     bp = re_make(bp; u0=lc, params=paramMap(x, xlc))::BifurcationProblem
     prob = remake(prob, u0=lc, p=paramMap(x, xlc))::ODEProblem
     # Create a solution using the previous limit cycle
-    sol = solve(prob, Tsit5(), tspan=(0.0, 50.0))::ODESolution
+    sol = DifferentialEquations.solve(prob, Tsit5(), tspan=(0.0, 50.0))::ODESolution
     # Get the shooting problem
     bpsh, cish = BifurcationKit.generate_ci_problem(ShootingProblem(M=1),
     bp, prob, sol, period; alg = Tsit5(), abstol=1e-10, reltol=1e-8)
@@ -373,7 +373,7 @@ Get the period of the limit cycle.
 """
 function get_period(lc::Vector{Float64}, prob::ODEProblem)::Number
     # Long simulation
-    sol = solve(prob, Tsit5(), tspan=(0.0, 50000.0), u0=lc)::ODESolution
+    sol = DifferentialEquations.solve(prob, Tsit5(), tspan=(0.0, 50000.0), u0=lc)::ODESolution
     # Get local maximums
     maxs = []
     for i in 2:length(sol.t)-1
@@ -453,7 +453,7 @@ if use_continuation
     const p = Model.params_cont
     prob = ODEProblem(Model.ode_cont!, Model.ic, (0.0, dataTime), Model.params_cont, abstol=1e-10, reltol=1e-8, maxiters=1e7)
     # Set up continuation solver
-    lens = (@lens _.step)
+    lens = @optic _.step
     const bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, Model.params_cont, lens)
     solver(v, w, x, y, z, verbose) = contSolver(v, w, x, y, z, bp, verbose)
     const opts_br = ContinuationPar(p_min = 0.0, p_max = 1.0, max_steps = 150, tol_stability = 1e-8, ds=1.0, dsmax=1.0, 
@@ -482,7 +482,7 @@ pTrue = @set pTrue.gl = 0.25
 
 # Run ODE to converged limit cycle
 prob_true = remake(prob, p=pTrue)::ODEProblem
-sol = solve(prob_true, Tsit5())::ODESolution
+sol = DifferentialEquations.solve(prob_true, Tsit5())::ODESolution
 plot(sol, idxs=Model.slow_idx, title="Check limit cycle is converged for true data")
 savefig(file_type*"check_converged_mcmc.pdf")
 if Tools.auto_converge_check(prob_true, sol[end], pTrue)
@@ -504,6 +504,7 @@ println("Log likelihood of true parameters: ", ll(sol.u[end], odedata, 2.0, prob
 
 # Run MCMC
 numSamples = 1000*5*10 # 1000 samples per parameter before adaption (10% of the samples)
+numSamples=100
 chain, accepts = mcmc(numSamples, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, odedata, paramMap, verbose)
 
 # Plot results

@@ -4,7 +4,6 @@ Pkg.add([
     "LinearAlgebra",
     "Parameters",
     "Plots",
-    "Setfield",
     "BifurcationKit",
     "DifferentialEquations",
     "BenchmarkTools",

@@ -83,6 +83,4 @@ slow_idx = 4
 
 plot_idx = 5
 
-cont_lens = [(@lens _.gna), (@lens _.gk), (@lens _.gs), (@lens _.gl)]
-
 end

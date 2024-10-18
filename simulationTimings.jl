@@ -1,4 +1,4 @@
-using Plots, BenchmarkPlots, StatsPlots, Setfield
+using Plots, BenchmarkPlots, StatsPlots
 using BifurcationKit, DifferentialEquations
 using BenchmarkTools
 const BK = BifurcationKit
@@ -17,28 +17,28 @@ plot_params = (linewidth=2., dpi=300, size=(450,300), legend=false)
 
 # ODE Benchmark
 prob = ODEProblem(Model.ode!, Model.ic, (0.0, 50000.0), Model.params, abstol=1e-10, reltol=1e-8)
-sol = solve(prob, Tsit5(), maxiters=1e7)
+sol = DifferentialEquations.solve(prob, Tsit5(), maxiters=1e7)
 plot(sol, idxs=Model.slow_idx, xlabel = "Time (ms)", ylabel = "Slow Variable", title="ODE Convergence"; plot_params...)
 savefig("ode_converge.pdf")
-b = @benchmarkable solve($prob, $Tsit5(), maxiters=1e7, save_everystep = false)
+b = @benchmarkable DifferentialEquations.solve($prob, $Tsit5(), maxiters=1e7, save_everystep = false)
 bg["ODE"]["ODE - Full"] = b
 
 # How long to it take to converge for ODE small step?
 prob = remake(prob, u0 = Model.ic_conv, tspan=(0.0, 50000.0))
-sol = solve(prob, Tsit5(), maxiters=1e7)
+sol = DifferentialEquations.solve(prob, Tsit5(), maxiters=1e7)
 plot(sol, idxs=Model.slow_idx, xlabel = "Time (ms)", ylabel = "Slow Variable", title = "ODE (gna: 120 -> 132)"; plot_params...)
 savefig("ode_param_change.pdf")
 converged = Tools.auto_converge_check(prob, sol(30000), Model.params)
 println("ODE Small Step Converged: ", converged)
 # Converged for the small change after t=30,000ms
 prob = remake(prob, tspan=(0.0, 30000.0))
-b = @benchmarkable solve($prob, $Tsit5(), maxiters=1e7, save_everystep = false)
+b = @benchmarkable DifferentialEquations.solve($prob, $Tsit5(), maxiters=1e7, save_everystep = false)
 bg["ODE"]["ODE - Small Step"] = b
 
 # Continuation Benchmark
 # Look at times to do a +- 10% change in each parameter and average results across a few parameters (only conductances)
-lens = (@lens _.gna)
-pVal = Setfield.get(Model.params_cont, lens)
+lens = @optic _.gna
+pVal = lens(Model.params_cont)
 bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, Model.params_cont, lens;
 	record_from_solution = (x, p) -> (V = x[Model.plot_idx]),)
 
@@ -55,7 +55,7 @@ argspo = (record_from_solution = (x, p) -> begin
 
 # 1 pulse solution
 prob_cont = ODEProblem(Model.ode_cont!, Model.ic_conv, (0.0, 20.0), Model.params_cont, abstol=1e-10, reltol=1e-8)
-sol_pulse = solve(prob_cont, Tsit5())
+sol_pulse = DifferentialEquations.solve(prob_cont, Tsit5())
 
 # Trapezoidal method
 bptrap, ci = BK.generate_ci_problem(PeriodicOrbitTrapProblem(M = 150),
@@ -92,7 +92,7 @@ p = @set p.gna = 132.0
 
 function check_converged(prob, ic, p, slow_idx, name="")
     prob = remake(prob, u0 = ic, tspan=(0.0, 50000.0), p=p)
-    sol = solve(prob, Tsit5(), maxiters=1e7)
+    sol = DifferentialEquations.solve(prob, Tsit5(), maxiters=1e7)
     plot(sol, idxs=slow_idx, title = "Continuation: "*name, xlabel = "Time (ms)", ylabel = "Slow Variable"; plot_params...)
 	savefig("continuation_convergence_"*name*".pdf")
 	check_converged = Tools.auto_converge_check(prob, ic, p)
