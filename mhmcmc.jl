@@ -522,7 +522,7 @@ posterior = chain[burnIn+1:end, :]
 
 # Plot posterior histograms
 paramNames = ["gNa" "gK" "gS" "gL" "σ"]
-pTrueWithNoise = [pTrue..., 2.0]
+pTrueWithNoise = [Model.params..., 2.0]
 for i in axes(posterior, 2)
     histogram(posterior[:, i], normalize=:pdf, title = "Posterior: "*paramNames[i], ylabel = "P(x)",
     legend = false; plot_params...)
