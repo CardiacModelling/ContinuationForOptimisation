@@ -544,4 +544,6 @@ CSV.write(file_type*"chain.csv", tab)
 
 # Benchmark the MCMC
 b = @benchmarkable mcmc($numSamples, $solver, [120.0, 13.0, 10.0, 0.3, 1.5], $prob, $odedata, $paramMap, $verbose)
-run(b, samples=1)
+t = run(b, seconds=120)
+
+Benchmark.save(file_type*"mcmc_benchmark.json", t)
