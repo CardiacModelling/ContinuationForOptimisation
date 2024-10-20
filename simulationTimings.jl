@@ -42,7 +42,7 @@ pVal = lens(Model.params_cont)
 bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, Model.params_cont, lens;
 	record_from_solution = (x, p) -> (V = x[Model.plot_idx]),)
 
-argspo = (record_from_solution = (x, p) -> begin
+argspo = (record_from_solution = (x, p; k...) -> begin
 		xtt = get_periodic_orbit(p.prob, x, p.p)
 		return (max = maximum(xtt[Model.plot_idx,:]),
 				min = minimum(xtt[Model.plot_idx,:]),
