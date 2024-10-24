@@ -115,7 +115,7 @@ b = @benchmarkable continuation($bpsh, $cish, $PALC(), $reducedOpts)
 bg["Cont"]["Cont - Shooting"] = b
 
 t = run(bg, seconds=120)
-plot(t["ODE"], st = :box, yaxis=:log10, dpi=300, size=(450,300), title="ODE vs Continuation Timings")
-plot!(t["Cont"], st=:box, yaxis=:log10, fillstyle=:dash, legend=:bottomleft, xaxis=nothing, ylabel="Time (ms)", yformatter=x->x/1e6)
+plot(t["ODE"], yaxis=:log10, dpi=300, size=(450,300), title="ODE vs Continuation Timings")
+plot!(t["Cont"], yaxis=:log10, linestyle=:dot, legend=:bottomleft, xaxis=nothing, ylabel="Time (ms)", yformatter=x->x/1e6)
 savefig("simulation_timings.pdf")
 BenchmarkTools.save("simulation_timings.json", t)
