@@ -570,4 +570,4 @@ CSV.write(file_type*"chain.csv", tab)
 b = @benchmarkable mcmc($numSamples, $solver, [120.0, 13.0, 10.0, 0.3, 1.5], $prob, $odedata, $paramMap, $verbose)
 t = run(b, seconds=120)
 
-Benchmark.save(file_type*"mcmc_benchmark.json", t)
+BenchmarkTools.save(file_type*"mcmc_benchmark.json", t)
