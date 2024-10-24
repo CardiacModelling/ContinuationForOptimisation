@@ -426,8 +426,7 @@ function param_map(x::Vector{Float64})::NamedTuple{(:gna, :gk, :gs, :gl), Tuple{
     # Set the parameters from the state x
     par = @set par.gna = x[1]
     par = @set par.gk = x[2]
-    par = @set par.gs = x[3]
-    par = @set par.gl = x[4]
+    par = @set par.gl = x[3]
     return par
 end
 
@@ -451,13 +450,11 @@ function param_map(x::Vector{Float64}, xlc::Vector{Float64})::NamedTuple{(:gna, 
     # Set the parameters from the state xlc (starting location for continuation)
     par = @set par.gna = xlc[1]
     par = @set par.gk = xlc[2]
-    par = @set par.gs = xlc[3]
-    par = @set par.gl = xlc[4]
+    par = @set par.gl = xlc[3]
     # Set the continuation step sizes
     par = @set par.gna_step = x[1] - xlc[1]
     par = @set par.gk_step = x[2] - xlc[2]
-    par = @set par.gs_step = x[3] - xlc[3]
-    par = @set par.gl_step = x[4] - xlc[4]
+    par = @set par.gl_step = x[3] - xlc[3]
     return par
 end
 
@@ -499,7 +496,6 @@ end
 pTrue = p
 pTrue = @set pTrue.gna = 110.0
 pTrue = @set pTrue.gk = 11.0
-pTrue = @set pTrue.gs = 12.0
 pTrue = @set pTrue.gl = 0.25
 
 # Run ODE to converged limit cycle
@@ -525,8 +521,8 @@ display(plot!(sol_pulse.t, odedata, label="Data"))
 println("Log likelihood of true parameters: ", ll(sol.u[end], odedata, 2.0, prob_true))
 
 # Run MCMC
-numSamples = 1000*5*10 # 1000 samples per parameter before adaption (10% of the samples)
-chain, accepts = mcmc(numSamples, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, odedata, paramMap, verbose)
+numSamples = 1000*4*10 # 1000 samples per parameter before adaption (10% of the samples)
+chain, accepts = mcmc(numSamples, solver, [120.0, 13.0, 0.3, 1.5], prob, odedata, paramMap, verbose)
 
 # Plot results
 plot_params = (linewidth=2., dpi=300, size=(450,300))
@@ -543,8 +539,8 @@ burnIn = round(Int, numSamples*0.25)
 posterior = chain[burnIn+1:end, :]
 
 # Plot posterior histograms
-paramNames = ["gNa" "gK" "gS" "gL" "σ"]
-pTrueWithNoise = [Model.params..., 2.0]
+paramNames = ["gNa" "gK" "gL" "σ"]
+pTrueWithNoise = deleteat!([Model.params..., 2.0], 3) # Remove gS from true parameters
 for i in axes(posterior, 2)
     histogram(posterior[:, i], normalize=:pdf, title = "Posterior: "*paramNames[i], ylabel = "P(x)",
     legend = false; plot_params...)
@@ -566,7 +562,7 @@ tab = Tables.table([chain convert(Vector{Bool}, accepts)]; header=[paramNames...
 CSV.write(file_type*"chain.csv", tab)
 
 # Benchmark the MCMC
-b = @benchmarkable mcmc($numSamples, $solver, [120.0, 13.0, 10.0, 0.3, 1.5], $prob, $odedata, $paramMap, $verbose)
+b = @benchmarkable mcmc($numSamples, $solver, [120.0, 13.0, 0.3, 1.5], $prob, $odedata, $paramMap, $verbose)
 t = run(b, seconds=120)
 
 BenchmarkTools.save(file_type*"mcmc_benchmark.json", t)
