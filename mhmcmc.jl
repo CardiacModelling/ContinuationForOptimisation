@@ -217,6 +217,9 @@ Inverse Gamma prior for noise `σ`.
 - `π::Number`: The prior logpdf.
 """
 function π(x::Vector{Float64})::Number
+    if any(x .< 0)
+        return -Inf
+    end
     ig = InverseGamma(2, 3)
     return logpdf(ig, x[end])
 end
@@ -237,6 +240,9 @@ Calculate the log-likelihood of the limit cycle compared with the data, and σ.
 - `ll::Number`: The log-likelihood.
 """
 function ll(limitCycle::Vector{Float64}, data::Vector{Float64}, σ::Number, prob::ODEProblem, verbose = 1)::Number
+    if σ < 0
+        return -Inf
+    end
     # Get estimate of data using parameters from p and the limit cycle
     sol, = aligned_sol(limitCycle, prob, period)
     # Calculate the log-likelihood of the data
