@@ -526,7 +526,6 @@ println("Log likelihood of true parameters: ", ll(sol.u[end], odedata, 2.0, prob
 
 # Run MCMC
 numSamples = 1000*5*10 # 1000 samples per parameter before adaption (10% of the samples)
-numSamples=100
 chain, accepts = mcmc(numSamples, solver, [120.0, 13.0, 10.0, 0.3, 1.5], prob, odedata, paramMap, verbose)
 
 # Plot results
