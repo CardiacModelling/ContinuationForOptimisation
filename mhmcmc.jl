@@ -182,7 +182,23 @@ Perturb state `x` to get a new state `xNew` and return it.
 - `xNew::Vector{Float64}`: The new state.
 """
 function q(x::Vector{Float64}, Σ::Hermitian{Float64})::Vector{Float64}
-    d = MvNormal(x, Σ)
+    local d
+    try
+        d = MvNormal(x, Σ)
+    catch e
+        if e isa PosDefException
+            println("Covariance matrix not positive definite")
+            println("Matrix: ", Σ)
+            eigs = eigvals(Σ)
+            println("Eigenvalues: ", eigs)
+            Σ += (eps()-minimum(eigs))*I
+            println("Adjusted matrix: ", Σ)
+            println("Adjusted eigenvalues: ", eigvals(Σ))
+            d = MvNormal(x, Σ)
+        else
+            rethrow(e)
+        end
+    end
     return rand(d)
 end
 
