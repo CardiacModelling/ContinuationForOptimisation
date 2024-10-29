@@ -44,8 +44,8 @@ gl=0.3, El=-64.387, Cm=1.0)
 z0 = [0.05, 0.6, 0.325, 0.3, -75.0]
 
 # Bifurcation Problem
-prob = BifurcationProblem(hh!, z0, params, (@lens _.gk);
-	record_from_solution = (x, p) -> (V = x[5]),)
+prob = BifurcationProblem(hh!, z0, params, (@optic _.gk);
+	record_from_solution = (x, p; k...) -> (V = x[5]),)
 
 
 ## Search along equillibria lines to find hopf bifurcations
@@ -96,10 +96,10 @@ display(title!("s channel: 1 pulse"))
 # continuation options
 opts_br = ContinuationPar(p_min = 100., p_max = 145.,
 )
-prob = BifurcationProblem(hh!, sol_pulse[end], params, (@lens _.gna);
+prob = BifurcationProblem(hh!, sol_pulse[end], params, (@optic _.gna);
 	record_from_solution = (x, p) -> (V = x[5]),)
 
-argspo = (record_from_solution = (x, p) -> begin
+argspo = (record_from_solution = (x, p; k...) -> begin
 		xtt = get_periodic_orbit(p.prob, x, p.p)
 		return (max = maximum(xtt[5,:]),
 				min = minimum(xtt[5,:]),

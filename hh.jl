@@ -37,8 +37,8 @@ bn3=80.0, gk=36.0, Ek=-87.0, gl=0.3, El=-64.387, Cm=1.0)
 z0 = [0.05, 0.6, 0.325, -75.0]
 
 # Bifurcation Problem
-prob = BifurcationProblem(hh!, z0, params, (@lens _.gk);
-	record_from_solution = (x, p) -> (V = x[4]),)
+prob = BifurcationProblem(hh!, z0, params, (@optic _.gk);
+	record_from_solution = (x, p; k...) -> (V = x[4]),)
 
 
 ## Search along equillibria lines to find hopf bifurcations
@@ -63,7 +63,7 @@ display(ylabel!("V"))
 z0 = [0.07301116, 0.4970336, 0.34507967, -72.22502]
 
 prob_de = ODEProblem(hh!, z0, (0,200.), params, reltol=1e-8, abstol=1e-8)
-sol = solve(prob_de, Rodas5())
+sol = DifferentialEquations.solve(prob_de, Rodas5())
 plot(sol.t, sol[4,:])
 display(title!("Default Parameters: gk 36.0"))
 
@@ -73,7 +73,7 @@ for gk_p in [24., 23.]
 	bn3=80.0, gk=gk_p, Ek=-87.0, gl=0.3, El=-64.387, Cm=1.0)
 
 	global prob_de = ODEProblem(hh!, z0, (0,200.), params, reltol=1e-8, abstol=1e-8)
-	global sol = solve(prob_de, Rodas5())
+	global sol = DifferentialEquations.solve(prob_de, Rodas5())
 	plot(sol.t, sol[4,:])
 	display(title!("gk: $gk_p"))
 end
@@ -81,7 +81,7 @@ end
 ## Continuation of limit cycle
 # Simulation a little bit more from updated ICs
 prob_de = ODEProblem(hh!, sol[end], (0,25.), params, reltol=1e-8, abstol=1e-8)
-sol_pulse = solve(prob_de, Rodas5())
+sol_pulse = DifferentialEquations.solve(prob_de, Rodas5())
 plot(sol_pulse.t, sol_pulse[4,:])
 display(title!("One pulse"))
 
@@ -91,10 +91,10 @@ opts_br = ContinuationPar(p_min = 0.2, p_max = 0.5,
 # parameters to have a smooth continuation curve
 dsmin = 0.001, dsmax = 0.05,
 )
-prob = BifurcationProblem(hh!, sol_pulse[end], params, (@lens _.gl);
+prob = BifurcationProblem(hh!, sol_pulse[end], params, (@optic _.gl);
 	record_from_solution = (x, p) -> (V = x[4]),)
 
-argspo = (record_from_solution = (x, p) -> begin
+argspo = (record_from_solution = (x, p; k...) -> begin
 		xtt = get_periodic_orbit(p.prob, x, p.p)
 		return (max = maximum(xtt[4,:]),
 				min = minimum(xtt[4,:]),
