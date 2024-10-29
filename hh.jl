@@ -53,9 +53,8 @@ dsmin = 0.001, dsmax = 0.05,
 br = continuation(prob, PALC(tangent=Bordered()), opts_br; normC = norminf, bothside=true)
 
 # Plot roughly matches MatCont, this doesn't detection all of the special points, although there may be a setting for it
-plot(br, plotfold=false, markersize=3, legend=:topleft)
-title!("Bifurcation Diagram: gk")
-display(ylabel!("V"))
+plot(br, plotfold=false, markersize=3, dpi=300, size=(450,300), legend=:topright, xlabel="gK", ylabel="V (mV)", title="Bifurcation Diagram: gK")
+savefig("bifurcation_diagram.pdf")
 
 ## Plot solution either side of hopf bifurcation
 
