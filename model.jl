@@ -6,13 +6,13 @@ using BifurcationKit
 export ode!, params, ic, ic_conv, slow_idx, plot_idx, cont_params
 
 # Noble_conc model
-function noble_conc!(dz, z, p, t=0)
+function ode!(dz, z, p, t=0)
 	# Constants
 	nao = 135
 	ko = 3.8
 
 	# Parameters
-	@unpack g_Na_sf, g_K_sf, g_L_sf, conv_rate = p
+	@unpack g_Na_sf, g_K_sf, g_L_sf = p
 
     # States
 	V, m, h, n, nai, ki = z
@@ -53,13 +53,17 @@ function noble_conc!(dz, z, p, t=0)
 	dz[2] = alpha_m*(1-m)-beta_m*m
 	dz[3] = alpha_h*(1-h)-beta_h*h
 	dz[4] = alpha_n*(1-n)-beta_n*n
-	dz[5] = conv_rate*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
-	dz[6] = conv_rate*(-(i_K)/(1000*F) - (ki-ki_target)/20.0)
+	dz[5] = 0.5*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
+	dz[6] = 0.5*(-(i_K)/(1000*F) - (ki-ki_target)/20.0)
 
 	dz
 end
 
-function noble_cont!(dz, z, p, t=0)
+function ode_cont!(dz, z, p, t=0)
+	# Constants
+	nao = 135
+	ko = 3.8
+
 	@unpack g_Na_sf, g_K_sf, g_L_sf, na_step, k_step, l_step, step = p
 
 	V, m, h, n = z
