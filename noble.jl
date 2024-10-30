@@ -1,5 +1,4 @@
 # Define the noble model and check continuation works
-# Create the noble_conc model which tracks internal ionic concentrations
 using Parameters, Plots
 using BifurcationKit
 using DifferentialEquations
@@ -87,4 +86,3 @@ brpo_sh = continuation(bpsh, cish, PALC(), opts_br;
 	verbosity = 3, plot = true,  
 	argspo...
 )
-
