@@ -63,13 +63,16 @@ end
 # parameter values
 params = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, conv_rate=1.0)
 
-# initial condition converged for all sf=1, 500sec
-z0 = [-10.973655963668815,
-0.8358708710300171,
-0.003386855046526595,
-0.5951597466628789,
-36.94115283735499,
-153.99233442845724]
+# initial condition
+# z0 = [-87.0, 0.01, 0.8, 0.01, 30, 160]
+
+# initial condition converged for all sf=1, 1000sec, conv_rate=1.0
+z0 = [-68.4831140261365,
+0.08798274879055851,
+0.53892786879803,
+0.44814247723133743,
+36.928537846865815,
+153.9951030364927]
 
 # perturb the parameters to tune the convergence rate
 params = @set params.g_Na_sf=1.1
