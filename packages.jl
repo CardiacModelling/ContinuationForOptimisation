@@ -10,6 +10,7 @@ Pkg.add([
     "CSV",
     "Tables",
     "BenchmarkPlots",
-    "StatsPlots"
+    "StatsPlots",
+    "Accessors",
     ]
 )
