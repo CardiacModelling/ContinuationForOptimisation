@@ -21,14 +21,14 @@ end
 
 # Check all variables are converged automatically
 function auto_converge_check(prob::ODEProblem, ic::Vector{Float64}, p::NamedTuple)::Bool
-    # Find the average across the first 1000ms for each state
-    sol = solve(prob, Tsit5(), u0=ic, p=p, tspan=(0.0, 1000.0))
+    # Find the average across the first 10s for each state
+    sol = solve(prob, Tsit5(), u0=ic, p=p, tspan=(0.0, 10.0), maxiters=1e9)
     avgs = mean(sol.u)
-    # Run for further 5000ms to try and converge closer
-    sol = solve(prob, Tsit5(), u0=sol[end], p=p, tspan=(0.0, 5000.0), save_everystep=false, save_start=false)
-    # Run for further 1000ms and get the range of each State
-    sol = solve(prob, Tsit5(), u0=sol[end], p=p, tspan=(0.0, 1000.0))
-    # If avgs is inside the range of the final 1000ms then it is converged
+    # Run for further 80s to try and converge closer
+    sol = solve(prob, Tsit5(), u0=sol[end], p=p, tspan=(0.0, 80.0), save_everystep=false, save_start=false, maxiters=1e9)
+    # Run for further 10s and get the range of each State
+    sol = solve(prob, Tsit5(), u0=sol[end], p=p, tspan=(0.0, 10.0), maxiters=1e9)
+    # If avgs is inside the range of the final 10s then it is converged
     sol = stack(sol.u)
     return all(minimum(sol, dims=2) .< avgs .< maximum(sol, dims=2))
 end
