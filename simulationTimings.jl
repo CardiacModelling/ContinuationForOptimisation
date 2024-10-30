@@ -18,16 +18,20 @@ plot_params = (linewidth=2., dpi=300, size=(450,300), legend=false)
 # ODE Benchmark
 prob = ODEProblem(Model.noble!, Model.ic, (0.0, 200.0), Model.params, abstol=1e-10, reltol=1e-8)
 sol = DifferentialEquations.solve(prob, Tsit5(), maxiters=1e9)
-plot(sol, idxs=Model.slow_idx, xlabel = "Time (ms)", ylabel = "Slow Variable", title="ODE Convergence"; plot_params...)
-savefig("ode_converge.pdf")
+plot(sol, idxs=Model.slow_idx[1], xlabel = "Time (ms)", ylabel = "Nai", title="ODE Convergence"; plot_params...)
+savefig("ode_converge-nai.pdf")
+plot(sol, idxs=Model.slow_idx[2], xlabel = "Time (ms)", ylabel = "Ki", title="ODE Convergence"; plot_params...)
+savefig("ode_converge-ki.pdf")
 b = @benchmarkable DifferentialEquations.solve($prob, $Tsit5(), maxiters=1e9, save_everystep = false)
 bg["ODE"]["ODE - Full"] = b
 
 # How long to it take to converge for ODE small step?
 prob = remake(prob, u0 = Model.ic_conv, tspan=(0.0, 200.0))
 sol = DifferentialEquations.solve(prob, Tsit5(), maxiters=1e9)
-plot(sol, idxs=Model.slow_idx, xlabel = "Time (ms)", ylabel = "Slow Variable", title = "ODE (gna: 120 -> 132)"; plot_params...)
-savefig("ode_param_change.pdf")
+plot(sol, idxs=Model.slow_idx[1], xlabel = "Time (ms)", ylabel = "Nai", title="ODE (gna: 120 -> 132)"; plot_params...)
+savefig("ode_param_change-nai.pdf")
+plot(sol, idxs=Model.slow_idx[2], xlabel = "Time (ms)", ylabel = "Ki", title="ODE (gna: 120 -> 132)"; plot_params...)
+savefig("ode_param_change-ki.pdf")
 converged = Tools.auto_converge_check(prob, sol(200), Model.params)
 println("ODE Small Step Converged: ", converged)
 # Converged for the small change after t=200s
@@ -100,8 +104,10 @@ function check_converged(prob, ic, p, slow_idx, name="")
 	println(name, " Converged: ", check_converged)
 end
 
-check_converged(prob, brpo_oc.sol[2].x[1:5], p, Model.slow_idx, "OColl")
-check_converged(prob, brpo_sh.sol[2].x[1:5], p, Model.slow_idx, "Shooting")
+check_converged(prob, brpo_oc.sol[2].x[1:5], p, Model.slow_idx[1], "OColl - Nai")
+check_converged(prob, brpo_oc.sol[2].x[1:5], p, Model.slow_idx[2], "OColl - Ki")
+check_converged(prob, brpo_sh.sol[2].x[1:5], p, Model.slow_idx[1], "Shooting - Nai")
+check_converged(prob, brpo_sh.sol[2].x[1:5], p, Model.slow_idx[2], "Shooting - Ki")
 
 reducedOpts = ContinuationPar(p_min = 0.9, p_max = 1.1, max_steps = 50, tol_stability = 1e-8, ds=0.1, dsmax=0.1, 
 detect_bifurcation=0, detect_fold=false,)
