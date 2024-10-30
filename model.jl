@@ -5,11 +5,19 @@ using BifurcationKit
 
 export ode!, params, ic, ic_conv, slow_idx, plot_idx, cont_params
 
-function noble!(dz, z, p, t=0)
-	@unpack g_Na_sf, g_K_sf, g_L_sf = p
+# Noble_conc model
+function noble_conc!(dz, z, p, t=0)
+	# Constants
+	nao = 135
+	ko = 3.8
 
-	V, m, h, n = z
+	# Parameters
+	@unpack g_Na_sf, g_K_sf, g_L_sf, conv_rate = p
+
+    # States
+	V, m, h, n, nai, ki = z
 	
+	# Gating transition rates
 	alpha_m = 100*(-V-48)/(exp((-V-48)/15)-1)
 	beta_m = 120*(V+8)/(exp((V+8)/5)-1)
 	alpha_h = 170*exp((-V-90)/20)
@@ -17,18 +25,36 @@ function noble!(dz, z, p, t=0)
 	alpha_n = 0.1*(-V-50)/(exp((-V-50)/10)-1)
 	beta_n = 2*exp((-V-90)/80)
 
+	# Conductances
 	g_Na = g_Na_sf*m^3*h*400000
 	g_K1 = g_K_sf*1200*exp((-V-90)/50)+15*exp((V+90)/60)
 	g_K2 = g_K_sf*1200*n^4
 
-	i_Leak = g_L_sf*75*(V+60)
-	i_Na = (g_Na+140)*(V-40)
-	i_K = (g_K1+g_K2)*(V+100)
+	# Nernst potentials
+	R = 8.314
+	T = 310
+	F = 96.485
+	ENa = R*T/F*log(nao/nai)
+	EK = R*T/F*log(ko/ki)
 
+	# Currents
+	i_Leak = g_L_sf*75*(V+60)
+	i_Na = (g_Na+140)*(V-ENa)
+	i_K = (g_K1+g_K2)*(V-EK)
+
+	# Calculate intra-cellular concentration targets
+	ENa_target = 40
+	EK_target = -100
+	nai_target = nao*exp(-ENa_target*F/(R*T))
+	ki_target = ko*exp(-EK_target*F/(R*T))
+
+	# Differential equations
 	dz[1] = -(i_Na+i_K+i_Leak)/12
 	dz[2] = alpha_m*(1-m)-beta_m*m
 	dz[3] = alpha_h*(1-h)-beta_h*h
 	dz[4] = alpha_n*(1-n)-beta_n*n
+	dz[5] = conv_rate*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
+	dz[6] = conv_rate*(-(i_K)/(1000*F) - (ki-ki_target)/20.0)
 
 	dz
 end
@@ -42,6 +68,10 @@ function noble_cont!(dz, z, p, t=0)
     g_K_sf = g_K_sf + k_step*step
     g_L_sf = g_L_sf + l_step*step
 
+    # States
+	V, m, h, n, nai, ki = z
+	
+	# Gating transition rates
 	alpha_m = 100*(-V-48)/(exp((-V-48)/15)-1)
 	beta_m = 120*(V+8)/(exp((V+8)/5)-1)
 	alpha_h = 170*exp((-V-90)/20)
@@ -49,18 +79,36 @@ function noble_cont!(dz, z, p, t=0)
 	alpha_n = 0.1*(-V-50)/(exp((-V-50)/10)-1)
 	beta_n = 2*exp((-V-90)/80)
 
+	# Conductances
 	g_Na = g_Na_sf*m^3*h*400000
 	g_K1 = g_K_sf*1200*exp((-V-90)/50)+15*exp((V+90)/60)
 	g_K2 = g_K_sf*1200*n^4
 
-	i_Leak = 75*(V+60)
-	i_Na = (g_Na+140)*(V-40)
-	i_K = (g_K1+g_K2)*(V+100)
+	# Nernst potentials
+	R = 8.314
+	T = 310
+	F = 96.485
+	ENa = R*T/F*log(nao/nai)
+	EK = R*T/F*log(ko/ki)
 
+	# Currents
+	i_Leak = g_L_sf*75*(V+60)
+	i_Na = (g_Na+140)*(V-ENa)
+	i_K = (g_K1+g_K2)*(V-EK)
+
+	# Calculate intra-cellular concentration targets
+	ENa_target = 40
+	EK_target = -100
+	nai_target = nao*exp(-ENa_target*F/(R*T))
+	ki_target = ko*exp(-EK_target*F/(R*T))
+
+	# Differential equations
 	dz[1] = -(i_Na+i_K+i_Leak)/12
 	dz[2] = alpha_m*(1-m)-beta_m*m
 	dz[3] = alpha_h*(1-h)-beta_h*h
 	dz[4] = alpha_n*(1-n)-beta_n*n
+	dz[5] = 0.5*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
+	dz[6] = 0.5*(-(i_K)/(1000*F) - (ki-ki_target)/20.0)
 
 	dz
 end
@@ -70,17 +118,15 @@ params = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0)::NamedTuple{(:g_Na_sf, :g_K_sf, :
 params_cont = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, na_step=0.0, k_step=0.0, l_step=0.0, step=0.0)::NamedTuple{(:g_Na_sf, :g_K_sf, :g_L_sf, :na_step, :k_step, :l_step, :step), Tuple{Float64, Float64, Float64, Float64, Float64, Float64, Float64}}
 
 # initial condition
-ic = [-87.0, 0.01, 0.8, 0.01]
-
-# Converged initial conditions - 200s at (abs=1e-10, rel=1e-10) tolerances
-ic_conv = [ -8.937179276718057,
-0.8653023029331617,
-0.0030371533410818727,
-0.6155744987359527,
-] #update at end
-
-slow_idx = 2
+ic = [-10.973655963668815,
+0.8358708710300171,
+0.003386855046526595,
+0.5951597466628789,
+36.94115283735499,
+153.99233442845724]
 
 plot_idx = 1
+
+slow_idx = [5,6]
 
 end
