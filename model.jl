@@ -2,6 +2,7 @@
 module Model
 using Parameters
 using BifurcationKit
+using NaNMath
 
 export ode!, params, ic, ic_conv, slow_idx, plot_idx, cont_params
 
@@ -34,8 +35,8 @@ function ode!(dz, z, p, t=0)
 	R = 8.314
 	T = 310
 	F = 96.485
-	ENa = R*T/F*log(nao/nai)
-	EK = R*T/F*log(ko/ki)
+	ENa = R*T/F*NaNMath.log(nao/nai)
+	EK = R*T/F*NaNMath.log(ko/ki)
 
 	# Currents
 	i_Leak = g_L_sf*75*(V+60)
@@ -92,8 +93,8 @@ function ode_cont!(dz, z, p, t=0)
 	R = 8.314
 	T = 310
 	F = 96.485
-	ENa = R*T/F*log(nao/nai)
-	EK = R*T/F*log(ko/ki)
+	ENa = R*T/F*NaNMath.log(nao/nai)
+	EK = R*T/F*NaNMath.log(ko/ki)
 
 	# Currents
 	i_Leak = g_L_sf*75*(V+60)
