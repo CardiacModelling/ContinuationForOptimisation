@@ -111,8 +111,8 @@ function ode_cont!(dz, z, p, t=0)
 	dz[2] = alpha_m*(1-m)-beta_m*m
 	dz[3] = alpha_h*(1-h)-beta_h*h
 	dz[4] = alpha_n*(1-n)-beta_n*n
-	dz[5] = 0.5*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
-	dz[6] = 0.5*(-(i_K)/(1000*F) - (ki-ki_target)/20.0)
+	dz[5] = 0.75*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
+	dz[6] = 0.75*(-(i_K)/(1000*F) - (ki-ki_target)/20.0)
 
 	dz
 end
@@ -124,13 +124,13 @@ params_cont = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, na_step=0.0, k_step=0.0, l_s
 # initial condition
 ic = [-87.0, 0.01, 0.8, 0.01, 30, 160]
 
-# initial condition converged for all sf=1, 1000sec, conv_rate=1.0
-ic_conv = [-68.4831140261365,
-0.08798274879055851,
-0.53892786879803,
-0.44814247723133743,
-36.928537846865815,
-153.9951030364927]
+# initial condition converged for all sf=1, 10000sec
+ic_conv = [-79.59361008872352
+0.048479754438797464
+0.81505625531288
+0.5698488534388237
+36.94523934784742
+153.98135759509282]
 
 plot_idx = 1
 

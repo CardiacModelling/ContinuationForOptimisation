@@ -76,14 +76,14 @@ z0 = [-68.4831140261365,
 
 # perturb the parameters to tune the convergence rate
 params = @set params.g_Na_sf=1.1
-params = @set params.conv_rate=0.5
+params = @set params.conv_rate=0.75
 
 # Want to converge in close to 100 seconds
 prob_de = ODEProblem(noble_conc!, z0, (0.,200.0), params, reltol=1e-8, abstol=1e-10)
 sol = DifferentialEquations.solve(prob_de, Tsit5(), maxiters=1e7, saveat=10.0)
 
-println("Convergence check - 100 seconds: ", Tools.auto_converge_check(prob_de, sol(100), params))
-println("Convergence check - 200 seconds: ", Tools.auto_converge_check(prob_de, sol(200), params))
+println("Convergence check - 90 seconds: ", Tools.auto_converge_check(prob_de, sol(90), params))
+println("Convergence check - 110 seconds: ", Tools.auto_converge_check(prob_de, sol(110), params))
 
 plot(sol, idxs=1)
 display(title!("Voltage from converged state"))
