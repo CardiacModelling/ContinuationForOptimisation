@@ -12,5 +12,6 @@ Pkg.add([
     "BenchmarkPlots",
     "StatsPlots",
     "Accessors",
+    "NaNMath",
     ]
 )
