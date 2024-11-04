@@ -13,5 +13,6 @@ Pkg.add([
     "StatsPlots",
     "Accessors",
     "NaNMath",
+    "LaTeXStrings",
     ]
 )
