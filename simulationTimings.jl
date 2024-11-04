@@ -9,117 +9,116 @@ using .Tools
 
 # Define BenchmarkGroup
 bg = BenchmarkGroup()
-bg["ODE"] = BenchmarkGroup()
-bg["Cont"] = BenchmarkGroup()
+bg["Small"] = BenchmarkGroup()
+bg["Large"] = BenchmarkGroup()
+bg["Small"]["ODE"] = BenchmarkGroup()
+bg["Small"]["Cont"] = BenchmarkGroup()
+bg["Large"]["ODE"] = BenchmarkGroup()
+bg["Large"]["Cont"] = BenchmarkGroup()
 
 # Plot parameters
 plot_params = (linewidth=2., dpi=300, size=(450,300), legend=false)
 
-# ODE Benchmark
-prob = ODEProblem(Model.noble!, Model.ic, (0.0, 200.0), Model.params, abstol=1e-10, reltol=1e-8)
-sol = DifferentialEquations.solve(prob, Tsit5(), maxiters=1e9)
-plot(sol, idxs=Model.slow_idx[1], xlabel = "Time (ms)", ylabel = "Nai", title="ODE Convergence"; plot_params...)
-savefig("ode_converge-nai.pdf")
-plot(sol, idxs=Model.slow_idx[2], xlabel = "Time (ms)", ylabel = "Ki", title="ODE Convergence"; plot_params...)
-savefig("ode_converge-ki.pdf")
-b = @benchmarkable DifferentialEquations.solve($prob, $Tsit5(), maxiters=1e9, save_everystep = false)
-bg["ODE"]["ODE - Full"] = b
-
-# How long to it take to converge for ODE small step?
-prob = remake(prob, u0 = Model.ic_conv, tspan=(0.0, 200.0))
-sol = DifferentialEquations.solve(prob, Tsit5(), maxiters=1e9)
-plot(sol, idxs=Model.slow_idx[1], xlabel = "Time (ms)", ylabel = "Nai", title="ODE (gna: 120 -> 132)"; plot_params...)
-savefig("ode_param_change-nai.pdf")
-plot(sol, idxs=Model.slow_idx[2], xlabel = "Time (ms)", ylabel = "Ki", title="ODE (gna: 120 -> 132)"; plot_params...)
-savefig("ode_param_change-ki.pdf")
-converged = Tools.auto_converge_check(prob, sol(200), Model.params)
-println("ODE Small Step Converged: ", converged)
-# Converged for the small change after t=200s
-prob = remake(prob, tspan=(0.0, 200.0))
-b = @benchmarkable DifferentialEquations.solve($prob, $Tsit5(), maxiters=1e9, save_everystep = false)
-bg["ODE"]["ODE - Small Step"] = b
-
-# Continuation Benchmark
-# Look at times to do a +- 10% change in each parameter and average results across a few parameters (only conductances)
-lens = @optic _.g_Na_sf
-bp = BifurcationProblem(Model.noble_cont!, Model.ic_conv, Model.params_cont, lens;
-	record_from_solution = (x, p) -> (V = x[Model.plot_idx]),)
-
-argspo = (record_from_solution = (x, p; k...) -> begin
-		xtt = get_periodic_orbit(p.prob, x, p.p)
-		return (max = maximum(xtt[Model.plot_idx,:]),
-				min = minimum(xtt[Model.plot_idx,:]),
-				period = getperiod(p.prob, x, p.p))
-	end,
-	plot_solution = (x, p; k...) -> begin
-		xtt = get_periodic_orbit(p.prob, x, p.p)
-		plot!(xtt.t, xtt[Model.plot_idx,:]; label = "V", k...)
-	end)
-
-# 1 pulse solution
-prob_cont = ODEProblem(Model.noble_cont!, Model.ic_conv, (0.0, 20.0), Model.params_cont, abstol=1e-10, reltol=1e-8)
-sol_pulse = DifferentialEquations.solve(prob_cont, Tsit5())
-
-opts_br = ContinuationPar(p_min = 0.9, p_max = 1.1, max_steps = 50, tol_stability = 1e-8, ds=0.1, dsmax=0.1, 
-detect_bifurcation=0, detect_fold=false, newton_options=NewtonPar(verbose=true))
-
-# Trapezoidal method - fails to converge
-# bptrap, ci = BK.generate_ci_problem(PeriodicOrbitTrapProblem(M = 1000),
-# bp, sol_pulse, 0.564)
-
-
-# brpo_trap = continuation(bptrap, ci, PALC(), opts_br;
-# 	verbosity = 3, plot = true,
-# 	argspo...
-# )
-
-# Orthogonal collocation method
-bpoc, cioc = BK.generate_ci_problem(PeriodicOrbitOCollProblem(120, 4),
-bp, sol_pulse, 0.564)
-
-brpo_oc = continuation(bpoc, cioc, PALC(), opts_br;
-	verbosity = 3, plot = true,
-	argspo...
-)
-
-# Shooting method
-bpsh, cish = BK.generate_ci_problem(ShootingProblem(M=1),
-bp, prob_cont, sol_pulse, 0.564; alg = Tsit5(), abstol=1e-10, reltol=1e-8)
-
-brpo_sh = continuation(bpsh, cish, PALC(), opts_br;
-	verbosity = 3, plot = true,
-	argspo...
-)
-
-# Verify that s is converged
-p = Model.params
-p = @set p.g_Na_sf = 1.1
-
-function check_converged(prob, ic, p, slow_idx, name="")
-    prob = remake(prob, u0 = ic, tspan=(0.0, 10.0), p=p)
-    sol = DifferentialEquations.solve(prob, Tsit5(), maxiters=1e9)
-    plot(sol, idxs=slow_idx, title = "Continuation: "*name, xlabel = "Time (ms)", ylabel = "Slow Variable"; plot_params...)
-	savefig("continuation_convergence_"*name*".pdf")
-	check_converged = Tools.auto_converge_check(prob, ic, p)
-	println(name, " Converged: ", check_converged)
+function convergence_plot(ic, prob, title, filename)
+	sol = DifferentialEquations.solve(prob, Tsit5(), tspan=(0.0, 200.0), maxiters=1e9, u0 = ic)
+	plot(sol, idxs=Model.slow_idx[1], xlabel = "Time (ms)", ylabel = "Nai", title=title; plot_params...)
+	savefig(filename*"-nai.pdf")
+	plot(sol, idxs=Model.slow_idx[2], xlabel = "Time (ms)", ylabel = "Ki", title=title; plot_params...)
+	savefig(filename*"-ki.pdf")
+	println(title, "    ", filename, "    ", Tools.auto_converge_check(prob, ic, prob.p))
 end
 
-check_converged(prob, brpo_oc.sol[2].x[1:5], p, Model.slow_idx[1], "OColl - Nai")
-check_converged(prob, brpo_oc.sol[2].x[1:5], p, Model.slow_idx[2], "OColl - Ki")
-check_converged(prob, brpo_sh.sol[2].x[1:5], p, Model.slow_idx[1], "Shooting - Nai")
-check_converged(prob, brpo_sh.sol[2].x[1:5], p, Model.slow_idx[2], "Shooting - Ki")
+# ODE Convergence
+tmp = Model.params
+pSmall = @set tmp.g_Na_sf = 1.1
+pLarge = @set tmp.g_Na_sf = 1.5
+pLarge = @set pLarge.g_K_sf = 1.2
+pLarge = @set pLarge.g_L_sf = 0.8
 
-reducedOpts = ContinuationPar(p_min = 0.9, p_max = 1.1, max_steps = 50, tol_stability = 1e-8, ds=0.1, dsmax=0.1, 
-detect_bifurcation=0, detect_fold=false,)
+prob = ODEProblem(Model.ode!, Model.ic, (0.0, 250.0), tmp, abstol=1e-10, reltol=1e-8)
 
-b = @benchmarkable continuation($bpoc, $cioc, $PALC(), $reducedOpts)
-bg["Cont"]["Cont - OColl"] = b
+# ODE Convergence - Full
+params = [pSmall, pLarge]
+tspans = [(0.0,300.0), (0.0, 250.0)]
+for i in eachindex(params)
+	p = params[i]
+	prob_de = remake(prob, p=p)
+	sol = DifferentialEquations.solve(prob_de, Tsit5(), tspan = tspans[i], maxiters=1e9, save_everystep=false)
+	convergence_plot(sol[end], prob_de, "From Converged State: Full ODE", 
+	"results/simTimings/"*(i==1 ? "small" : "large")*"Step/convergence/ode-full")
+	b = @benchmarkable DifferentialEquations.solve($prob_de, $Tsit5(), maxiters=1e9, save_everystep = false)
+	bg[i==1 ? "Small" : "Large"]["ODE"]["ODE - Full"] = b
+end
 
-b = @benchmarkable continuation($bpsh, $cish, $PALC(), $reducedOpts)
-bg["Cont"]["Cont - Shooting"] = b
+# ODE Convergence - Short
+tspans = [(0.0,200.0), (0.0, 150.0)]
+for i in eachindex(params)
+	p = params[i]
+	prob_de = remake(prob, p=p)
+	sol = DifferentialEquations.solve(prob_de, Tsit5(), maxiters=1e9, u0 = Model.ic_conv, tspan=tspans[i], save_everystep=false)
+	convergence_plot(sol[end], prob_de, "From Converged State: Short ODE", "results/simTimings/"*(i==1 ? "small" : "large")*"Step/convergence/ode-short")
+	b = @benchmarkable DifferentialEquations.solve($prob_de, $Tsit5(), maxiters=1e9, save_everystep = false)
+	bg[i==1 ? "Small" : "Large"]["ODE"]["ODE - Short"] = b
+end
 
-t = run(bg, seconds=120)
-plot(t["ODE"], yaxis=:log10, dpi=300, size=(450,300), title="ODE vs Continuation Timings")
-plot!(t["Cont"], yaxis=:log10, linestyle=:dot, legend=:bottomleft, xaxis=nothing, ylabel="Time (ms)", yformatter=x->x/1e6)
-savefig("simulation_timings.pdf")
-BenchmarkTools.save("simulation_timings.json", t)
+# Continuation Convergence
+function early_abort((x, f, J, res, iteration, itlinear, options); kwargs...)
+	if res < 5e2
+		return true
+	else
+		return false
+	end
+end
+
+lens = @optic _.step
+
+tmp = Model.params_cont
+pSmall = @set tmp.na_step = 0.1
+pLarge = @set tmp.na_step = 0.5
+pLarge = @set pLarge.k_step = 0.2
+pLarge = @set pLarge.l_step = -0.2
+
+params = [pSmall, pLarge]
+ds = [1.0, 0.4]
+for i in eachindex(params)
+	if i>1
+	p = params[i]
+	bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, p, lens;
+		record_from_solution = (x, p) -> (V = x[Model.plot_idx]),)
+
+	# 1 pulse solution
+	prob_cont = ODEProblem(Model.ode_cont!, Model.ic_conv, (0.0, 0.5216), p, abstol=1e-10, reltol=1e-8)
+	sol_pulse = DifferentialEquations.solve(prob_cont, Tsit5())
+
+	opts_br = ContinuationPar(p_min = 0.0, p_max = 1.0, max_steps = 50, tol_stability = 1e-8, ds=ds[i], dsmax=1.0, 
+	detect_bifurcation=0, detect_fold=false, newton_options=NewtonPar(verbose=true, tol=1e-10))
+
+	# Shooting method
+	bpsh, cish = BK.generate_ci_problem(ShootingProblem(M=1, update_section_every_step=0), #update_section_every_step=0 avoids bpsh being perturbed between benchmark runs
+	bp, prob_cont, sol_pulse, 0.5216; alg = Tsit5(), abstol=1e-10, reltol=1e-8)
+
+	brpo_sh = continuation(bpsh, cish, PALC(), opts_br;
+		verbosity = 3, callback_newton = early_abort
+	)
+
+	# Check converged
+	convergence_plot(brpo_sh.sol[end].x[1:end-1], remake(prob_cont, p=@set p.step = 1.0), "From Converged State: Shooting", "results/simTimings/"*(i==1 ? "small" : "large")*"Step/convergence/cont-shooting")
+
+	reducedOpts = ContinuationPar(p_min = 0.0, p_max = 1.0, max_steps = 50, tol_stability = 1e-8, 
+	ds=1.0, dsmax=1.0, detect_bifurcation=0, detect_fold=false, newton_options=NewtonPar(tol=1e-10))
+
+	b = @benchmarkable continuation($bpsh, $cish, $PALC(), $reducedOpts; callback_newton = early_abort)
+	bg[i==1 ? "Small" : "Large"]["Cont"]["Cont - Shooting"] = b
+	end
+end
+
+println("Reached the end of the script. Just running benchmark now.")
+t = run(bg, seconds=20)
+plot(t["Small"]["ODE"], yaxis=:log10, dpi=300, size=(450,300), title="Small Perturbation")
+plot!(t["Small"]["Cont"], yaxis=:log10, linestyle=:dot, legend=:bottomleft, xaxis=nothing, ylabel="Time (ms)", yformatter=x->x/1e6)
+savefig("results/simTimings/smallStep/smallTimings.pdf")
+plot(t["Large"]["ODE"], yaxis=:log10, dpi=300, size=(450,300), title="Large Perturbation")
+plot!(t["Large"]["Cont"], yaxis=:log10, linestyle=:dot, legend=:topleft, xaxis=nothing, ylabel="Time (ms)", yformatter=x->x/1e6)
+savefig("results/simTimings/largeStep/largeTimings.pdf")
+
+BenchmarkTools.save("results/simTimings/data.json", t)
