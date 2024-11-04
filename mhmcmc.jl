@@ -395,7 +395,7 @@ Get the period of the limit cycle.
 """
 function get_period(lc::Vector{Float64}, prob::ODEProblem)::Number
     # Long simulation
-    sol = DifferentialEquations.solve(prob, Tsit5(), tspan=(0.0, 50000.0), u0=lc)::ODESolution
+    sol = DifferentialEquations.solve(prob, Tsit5(), tspan=(0.0, 500.0), u0=lc)::ODESolution
     # Get local maximums
     maxs = []
     for i in 2:length(sol.t)-1
@@ -501,8 +501,6 @@ pTrue = @set pTrue.gl = 0.25
 # Run ODE to converged limit cycle
 prob_true = remake(prob, p=pTrue)::ODEProblem
 sol = DifferentialEquations.solve(prob_true, Tsit5())::ODESolution
-plot(sol, idxs=Model.slow_idx, title="Check limit cycle is converged for true data")
-savefig(file_type*"check_converged_mcmc.pdf")
 if Tools.auto_converge_check(prob_true, sol[end], pTrue)
     println("Data is appropriately converged")
 else

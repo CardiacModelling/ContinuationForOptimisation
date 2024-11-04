@@ -2,85 +2,139 @@
 module Model
 using Parameters
 using BifurcationKit
+using NaNMath
 
 export ode!, params, ic, ic_conv, slow_idx, plot_idx, cont_params
 
+# Noble_conc model
 function ode!(dz, z, p, t=0)
-    am1, am2, am3, bm1, bm2, bm3, ah1, ah2, ah3, bh1, bh2, Ena, an1, an2, an3, bn1, bn2, bn3, 
-    Ek, as1, as2, as3, bs1, bs2, bs3, Es, El, Cm = 0.1, 50.0, 10.0, 4.0, 75.0, 18.0, 0.07, 75.0, 
-    20.0, 45.0, 10.0, 40.0, 0.01, 65.0, 10.0, 0.125, 75.0, 80.0, -87.0, 1e-6, 65.0, 10.0, 1e-4, 
-    75.0, 80.0, -87.0, -64.387, 1.0
+	# Constants
+	nao = 135
+	ko = 3.8
 
-	@unpack gna, gk, gs, gl = p
+	# Parameters
+	@unpack g_Na_sf, g_K_sf, g_L_sf = p
 
-	m, h, n, s, V = z
+    # States
+	V, m, h, n, nai, ki = z
+	
+	# Gating transition rates
+	alpha_m = 100*(-V-48)/(exp((-V-48)/15)-1)
+	beta_m = 120*(V+8)/(exp((V+8)/5)-1)
+	alpha_h = 170*exp((-V-90)/20)
+	beta_h = 1000/(1+exp((-V-42)/10))
+	alpha_n = 0.1*(-V-50)/(exp((-V-50)/10)-1)
+	beta_n = 2*exp((-V-90)/80)
 
-    alpha_m=-am1*(V+am2)/(exp(-(V+am2)/am3)-1)
-    beta_m=bm1*exp(-(V+bm2)/bm3)
-    alpha_h=ah1*exp(-(V+ah2)/ah3)
-    beta_h=1/(exp(-(V+bh1)/bh2)+1)
-    alpha_n=-an1*(V+an2)/(exp(-(V+an2)/an3)-1)
-    beta_n=bn1*exp((V+bn2)/bn3)
-	alpha_s=-as1*(V+as2)/(exp(-(V+as2)/as3)-1)
-	beta_s=bs1*exp((V+bs2)/bs3)
-    
-	dz[1] = alpha_m*(1-m)-beta_m*m
-	dz[2] =	alpha_h*(1-h)-beta_h*h
-	dz[3] = alpha_n*(1-n)-beta_n*n
-	dz[4] = alpha_s*(1-s)-beta_s*s
-    dz[5] = -(gna*m^3*h*(V-Ena)+gk*n^4*(V-Ek)+gs*s^4*(V-Es)+gl*(V-El))/Cm
-    dz
+	# Conductances
+	g_Na = g_Na_sf*m^3*h*400000
+	g_K1 = g_K_sf*1200*exp((-V-90)/50)+15*exp((V+90)/60)
+	g_K2 = g_K_sf*1200*n^4
+
+	# Nernst potentials
+	R = 8.314
+	T = 310
+	F = 96.485
+	ENa = R*T/F*NaNMath.log(nao/nai)
+	EK = R*T/F*NaNMath.log(ko/ki)
+
+	# Currents
+	i_Leak = g_L_sf*75*(V+60)
+	i_Na = (g_Na+140)*(V-ENa)
+	i_K = (g_K1+g_K2)*(V-EK)
+
+	# Calculate intra-cellular concentration targets
+	ENa_target = 40
+	EK_target = -100
+	nai_target = nao*exp(-ENa_target*F/(R*T))
+	ki_target = ko*exp(-EK_target*F/(R*T))
+
+	# Differential equations
+	dz[1] = -(i_Na+i_K+i_Leak)/12
+	dz[2] = alpha_m*(1-m)-beta_m*m
+	dz[3] = alpha_h*(1-h)-beta_h*h
+	dz[4] = alpha_n*(1-n)-beta_n*n
+	dz[5] = 0.5*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
+	dz[6] = 0.5*(-(i_K)/(1000*F) - (ki-ki_target)/20.0)
+
+	dz
 end
 
 function ode_cont!(dz, z, p, t=0)
-    am1, am2, am3, bm1, bm2, bm3, ah1, ah2, ah3, bh1, bh2, Ena, an1, an2, an3, bn1, bn2, bn3, 
-    Ek, as1, as2, as3, bs1, bs2, bs3, Es, El, Cm = 0.1, 50.0, 10.0, 4.0, 75.0, 18.0, 0.07, 75.0, 
-    20.0, 45.0, 10.0, 40.0, 0.01, 65.0, 10.0, 0.125, 75.0, 80.0, -87.0, 1e-6, 65.0, 10.0, 1e-4, 
-    75.0, 80.0, -87.0, -64.387, 1.0
+	# Constants
+	nao = 135
+	ko = 3.8
 
-	@unpack gna, gk, gs, gl, gna_step, gk_step, gs_step, gl_step, step = p
+	@unpack g_Na_sf, g_K_sf, g_L_sf, na_step, k_step, l_step, step = p
 
-    gna = gna + gna_step*step
-    gk = gk + gk_step*step
-    gs = gs + gs_step*step
-    gl = gl + gl_step*step
+	V, m, h, n = z
+	
+    g_Na_sf = g_Na_sf + na_step*step
+    g_K_sf = g_K_sf + k_step*step
+    g_L_sf = g_L_sf + l_step*step
 
-	m, h, n, s, V = z
+    # States
+	V, m, h, n, nai, ki = z
+	
+	# Gating transition rates
+	alpha_m = 100*(-V-48)/(exp((-V-48)/15)-1)
+	beta_m = 120*(V+8)/(exp((V+8)/5)-1)
+	alpha_h = 170*exp((-V-90)/20)
+	beta_h = 1000/(1+exp((-V-42)/10))
+	alpha_n = 0.1*(-V-50)/(exp((-V-50)/10)-1)
+	beta_n = 2*exp((-V-90)/80)
 
-    alpha_m=-am1*(V+am2)/(exp(-(V+am2)/am3)-1)
-    beta_m=bm1*exp(-(V+bm2)/bm3)
-    alpha_h=ah1*exp(-(V+ah2)/ah3)
-    beta_h=1/(exp(-(V+bh1)/bh2)+1)
-    alpha_n=-an1*(V+an2)/(exp(-(V+an2)/an3)-1)
-    beta_n=bn1*exp((V+bn2)/bn3)
-	alpha_s=-as1*(V+as2)/(exp(-(V+as2)/as3)-1)
-	beta_s=bs1*exp((V+bs2)/bs3)
-    
-	dz[1] = alpha_m*(1-m)-beta_m*m
-	dz[2] =	alpha_h*(1-h)-beta_h*h
-	dz[3] = alpha_n*(1-n)-beta_n*n
-	dz[4] = alpha_s*(1-s)-beta_s*s
-    dz[5] = -(gna*m^3*h*(V-Ena)+gk*n^4*(V-Ek)+gs*s^4*(V-Es)+gl*(V-El))/Cm
-    dz
+	# Conductances
+	g_Na = g_Na_sf*m^3*h*400000
+	g_K1 = g_K_sf*1200*exp((-V-90)/50)+15*exp((V+90)/60)
+	g_K2 = g_K_sf*1200*n^4
+
+	# Nernst potentials
+	R = 8.314
+	T = 310
+	F = 96.485
+	ENa = R*T/F*NaNMath.log(nao/nai)
+	EK = R*T/F*NaNMath.log(ko/ki)
+
+	# Currents
+	i_Leak = g_L_sf*75*(V+60)
+	i_Na = (g_Na+140)*(V-ENa)
+	i_K = (g_K1+g_K2)*(V-EK)
+
+	# Calculate intra-cellular concentration targets
+	ENa_target = 40
+	EK_target = -100
+	nai_target = nao*exp(-ENa_target*F/(R*T))
+	ki_target = ko*exp(-EK_target*F/(R*T))
+
+	# Differential equations
+	dz[1] = -(i_Na+i_K+i_Leak)/12
+	dz[2] = alpha_m*(1-m)-beta_m*m
+	dz[3] = alpha_h*(1-h)-beta_h*h
+	dz[4] = alpha_n*(1-n)-beta_n*n
+	dz[5] = 0.75*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
+	dz[6] = 0.75*(-(i_K)/(1000*F) - (ki-ki_target)/20.0)
+
+	dz
 end
 
 # parameter values
-params = (gna=120.0, gk=13.0, gs=10.0, gl=0.3)::NamedTuple{(:gna, :gk, :gs, :gl), Tuple{Float64, Float64, Float64, Float64}}
-params_cont = (gna=120.0, gk=13.0, gs=10.0, gl=0.3, gna_step=0.0, gk_step=0.0, gs_step=0.0, gl_step=0.0, step=0.0)::NamedTuple{(:gna, :gk, :gs, :gl, :gna_step, :gk_step, :gs_step, :gl_step, :step), Tuple{Float64, Float64, Float64, Float64, Float64, Float64, Float64, Float64, Float64}}
+params = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0)::NamedTuple{(:g_Na_sf, :g_K_sf, :g_L_sf), Tuple{Float64, Float64, Float64}}
+params_cont = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, na_step=0.0, k_step=0.0, l_step=0.0, step=0.0)::NamedTuple{(:g_Na_sf, :g_K_sf, :g_L_sf, :na_step, :k_step, :l_step, :step), Tuple{Float64, Float64, Float64, Float64, Float64, Float64, Float64}}
 
 # initial condition
-ic = [0.05, 0.6, 0.325, 0.3, -75.0]
+ic = [-87.0, 0.01, 0.8, 0.01, 30, 160]
 
-# Converged initial conditions - 50,000ms at (abs=1e-10, rel=1e-8) tolerances
-ic_conv = [0.13752161502545546,
-0.4393685543525413,
-0.3638744137880853,
-0.12343178944696619,
--64.37702302658744,
-]
+# initial condition converged for all sf=1, >10000sec
+ic_conv = [-76.15927916665447,
+0.05853136785827996,
+0.7399258742749906,
+0.48741488352157963,
+36.93923850100888,
+153.98641850278742]
 
-slow_idx = 4
+plot_idx = 1
 
-plot_idx = 5
+slow_idx = [5,6]
 
 end
