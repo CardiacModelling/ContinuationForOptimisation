@@ -395,7 +395,7 @@ Get the period of the limit cycle.
 """
 function get_period(lc::Vector{Float64}, prob::ODEProblem)::Number
     # Long simulation
-    sol = DifferentialEquations.solve(prob, Tsit5(), tspan=(0.0, 50000.0), u0=lc)::ODESolution
+    sol = DifferentialEquations.solve(prob, Tsit5(), tspan=(0.0, 500.0), u0=lc)::ODESolution
     # Get local maximums
     maxs = []
     for i in 2:length(sol.t)-1
