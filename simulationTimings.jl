@@ -50,6 +50,18 @@ for i in eachindex(params)
 	bg[i==1 ? "Small" : "Large"]["ODE"]["ODE - Full"] = b
 end
 
+# ODE Convergence - 1000s
+params = [pSmall, pLarge]
+for i in eachindex(params)
+	p = params[i]
+	prob_de = remake(prob, p=p)
+	sol = DifferentialEquations.solve(prob_de, Tsit5(), tspan = (0.0, 1000.0), maxiters=1e9, save_everystep=false)
+	convergence_plot(sol[end], prob_de, "From Converged State: Full ODE 1000sec", 
+	"results/simTimings/"*(i==1 ? "small" : "large")*"Step/convergence/ode-1000")
+	b = @benchmarkable DifferentialEquations.solve($prob_de, $Tsit5(), maxiters=1e9, save_everystep = false)
+	bg[i==1 ? "Small" : "Large"]["ODE"]["ODE - 1000sec"] = b
+end
+
 # ODE Convergence - Short
 tspans = [(0.0,200.0), (0.0, 150.0)]
 for i in eachindex(params)
