@@ -1,4 +1,4 @@
-using Plots, LaTeXStrings
+using Plots, LaTeXStrings, Distributions
 
 plotParams = (linewidth=2., dpi=300, size=(450,300))
 l = @layout [a b]
@@ -66,4 +66,26 @@ plotB = hline!([initialCondition], label="Initial Condition", color=:pink; plotP
 
 plot(plotA, plotB, layout=l, size=(900,300), dpi=300, margin=5Plots.mm, left_margin=10Plots.mm)
 annotate!([(-0.1, 5, text("A", 16, :black)), (1.13, 5, text("B", 16, :black))])
-#savefig("results/diagrams/possibleProblems.pdf")
+savefig("results/diagrams/possibleProblems.pdf")
+
+# Convergence figure
+frequency = 790.0
+
+x = 0:0.0001:1
+y = @. 0.9*exp(-3x)+0.1+0.01*sin(frequency*x)
+plot(x, y, ylim=(0,1), xlim=(0,1), legend=false, yticks=nothing, xticks=nothing, xlabel="Time", 
+ylabel="Slow Variable", left_margin=5Plots.mm; dpi=plotParams.dpi, size=plotParams.size, linewidth=1.25)
+
+lens!([0.95, 1.0], [0.13, 0.18], inset = (1, bbox(0.5, 0.1, 0.4, 0.4)), xticks=nothing, 
+yticks=nothing, label="", title="Converged", titlefontcolor=:darkgreen, titlefontsize=10, 
+foreground_color_legend=nothing, framestyle=:box)
+# Alignment on the period isn't done in the actual convergence check, but we include many more oscillations than we can show in this figure
+period = 2*pi/frequency
+m = minimum(y[1-2*period.<=x.<=1.0])
+plot!([1-2*period, 1.0], [m, m], subplot=2, color=:purple, label="Range"; plotParams...)
+m = maximum(y[1-2*period.<=x.<=1.0])
+plot!([1-2*period, 1.0], [m, m], subplot=2, color=:purple, label=""; plotParams...)
+m = mean(y[0.95.<=x.<=0.95+2*period])
+plot!([0.95, 0.95+2*period], [m, m], subplot=2, color=:red, label="Average"; plotParams...)
+
+savefig("results/diagrams/convergence.pdf")
