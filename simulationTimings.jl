@@ -93,7 +93,6 @@ pLarge = @set pLarge.l_step = -0.2
 params = [pSmall, pLarge]
 ds = [1.0, 0.4]
 for i in eachindex(params)
-	if i>1
 	p = params[i]
 	bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, p, lens;
 		record_from_solution = (x, p) -> (V = x[Model.plot_idx]),)
@@ -121,7 +120,6 @@ for i in eachindex(params)
 
 	b = @benchmarkable continuation($bpsh, $cish, $PALC(), $reducedOpts; callback_newton = early_abort)
 	bg[i==1 ? "Small" : "Large"]["Cont"]["Cont - Shooting"] = b
-	end
 end
 
 println("Reached the end of the script. Just running benchmark now.")
