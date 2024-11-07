@@ -474,7 +474,7 @@ end
 # Method selection and settings
 const use_continuation = true
 const use_fast_ode = true
-file_type = use_continuation ? "cont_" : (use_fast_ode ? "fastODE_" : "fullODE")
+file_type = "results/mcmc/"*(use_continuation ? "cont_" : (use_fast_ode ? "fastODE_" : "fullODE"))
 verbose = 2
 # Time to run the ODE for the data
 dataTime = 1000.0
