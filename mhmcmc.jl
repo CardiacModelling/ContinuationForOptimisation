@@ -327,6 +327,19 @@ function odeSolverCheap(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64
 end
 
 """
+    early_abort((x, f, J, res, iteration, itlinear, options); kwargs...)
+
+Abort Newton iterations in continuation if residuals are too large. This will attempt again with a smaller step size.
+"""
+function early_abort((x, f, J, res, iteration, itlinear, options); kwargs...)
+	if res < 5e2
+		return true
+	else
+		return false
+	end
+end
+
+"""
     contSolver(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, xlc::Vector{Float64}, paramMap::Function, bp::BifurcationProblem, verbose::Integer)::Vector{Float64}
 
 Perform continuation on the ODE to get the limit cycle.
@@ -359,7 +372,7 @@ function contSolver(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, x
     local brpo_sh::Union{Nothing, ContResult}
     try
         brpo_sh = continuation(bpsh, cish, PALC(), opts_br;
-            verbosity = 0, bothside=bothside)
+            verbosity = 0, bothside=bothside, callback_newton = early_abort)
     catch e
         if verbose > 0
             println("Continuation failed: ", e)
