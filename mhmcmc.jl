@@ -535,6 +535,10 @@ println("Log likelihood of true parameters: ", ll(sol.u[end], odedata, 2.0, prob
 numSamples = 1000*4*10 # 1000 samples per parameter before adaption (10% of the samples)
 chain, accepts = mcmc(numSamples, solver, [1.0, 1.0, 1.0, 1.5], prob, odedata, paramMap, verbose)
 
+# Write data to CSV
+tab = Tables.table([chain convert(Vector{Bool}, accepts)]; header=[paramNames..., "Accept"])
+CSV.write(file_type*"chain.csv", tab)
+
 # Plot results
 plot_params = (linewidth=2., dpi=300, size=(450,300))
 
@@ -567,10 +571,6 @@ hline!([1.0], label="Truth", color=:black, linewidth=1.5)
 vline!([numSamples*0.25+0.5], label="Burn In", color=:red, linewidth=1.5, linestyle=:dot)
 vline!([numSamples*0.1+0.5], label="Adaption", color=:green, linewidth=1.5, linestyle=:dot)
 savefig(file_type*"convergence.pdf")
-
-# Write data to CSV
-tab = Tables.table([chain convert(Vector{Bool}, accepts)]; header=[paramNames..., "Accept"])
-CSV.write(file_type*"chain.csv", tab)
 
 # Benchmark the MCMC
 b = @benchmarkable mcmc($numSamples, $solver, [1.0, 1.0, 1.0, 1.5], $prob, $odedata, $paramMap, $verbose)
