@@ -271,16 +271,16 @@ Align the limit cycle in the solution to start at the max of V and fixes the tim
 """
 function aligned_sol(lc::Vector{Float64}, prob::ODEProblem, period::Number; save_only_V::Bool = true)
     # Simulation of length 2*period to find the max of V
-    sol = DifferentialEquations.solve(prob, Tsit5(); tspan=(0.0, period*2.0), u0=lc, save_idxs=Model.plot_idx, saveat=0.01, dense=false)::ODESolution
+    sol = DifferentialEquations.solve(prob, Tsit5(); tspan=(0.0, period*2.0), u0=lc, save_idxs=Model.plot_idx, saveat=1e-5, dense=false, maxiters=1e9)::ODESolution
     # Find the time where V is maximised
     t = sol.t[argmax(sol.u)]
     # Find the states at that time
-    sol = DifferentialEquations.solve(prob, Tsit5(); tspan = (0.0,t), u0=sol.prob.u0, save_everystep=false, save_start=false)
+    sol = DifferentialEquations.solve(prob, Tsit5(); tspan = (0.0,t), u0=sol.prob.u0, save_everystep=false, save_start=false, maxiters=1e9)
     # Get the aligned solution
     if save_only_V
-        return DifferentialEquations.solve(prob, Tsit5(), saveat=0.1, save_idxs=Model.plot_idx, tspan=(0.0, period), u0=sol.u[end])::ODESolution, period
+        return DifferentialEquations.solve(prob, Tsit5(), saveat=0.01, save_idxs=Model.plot_idx, tspan=(0.0, period), u0=sol.u[end], maxiters=1e9)::ODESolution, period
     else
-        return DifferentialEquations.solve(prob, Tsit5(), saveat=0.1, tspan=(0.0, period), u0=sol.u[end])::ODESolution, period
+        return DifferentialEquations.solve(prob, Tsit5(), saveat=0.01, tspan=(0.0, period), u0=sol.u[end], maxiters=1e9)::ODESolution, period
     end
 end
 
@@ -301,7 +301,7 @@ Solve the ODE until convergence starting from the default initial conditions.
 - `lc::Vector{Float64}`: The converged limit cycle.
 """
 function odeSolverFull(x::Vector{Float64}, prob::ODEProblem, ::Vector{Float64}, ::Vector{Float64}, paramMap::Function, verbose=1::Integer)::Vector{Float64}
-    tmp = DifferentialEquations.solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 50000.0), p=paramMap(x, x), save_start=false)::ODESolution
+    tmp = DifferentialEquations.solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 1000.0), p=paramMap(x, x), save_start=false, maxiters=1e9)::ODESolution
     return tmp[end]
 end
 
@@ -322,7 +322,7 @@ Solve the ODE until convergence but starting from the previous limit cycle.
 - `lc::Vector{Float64}`: The converged limit cycle.
 """
 function odeSolverCheap(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, ::Vector{Float64}, paramMap::Function, verbose::Integer)::Vector{Float64}
-    tmp = DifferentialEquations.solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 10000.0), p=paramMap(x, x), u0=lc, save_start=false)::ODESolution
+    tmp = DifferentialEquations.solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 150.0), p=paramMap(x, x), u0=lc, save_start=false, maxiters=1e9)::ODESolution
     return tmp[end]
 end
 
@@ -348,7 +348,7 @@ function contSolver(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, x
     bp = re_make(bp; u0=lc, params=paramMap(x, xlc))::BifurcationProblem
     prob = remake(prob, u0=lc, p=paramMap(x, xlc))::ODEProblem
     # Create a solution using the previous limit cycle
-    sol = DifferentialEquations.solve(prob, Tsit5(), tspan=(0.0, 50.0))::ODESolution
+    sol = DifferentialEquations.solve(prob, Tsit5(), tspan=(0.0, period*2), maxiters=1e9)::ODESolution
     # Get the shooting problem
     bpsh, cish = BifurcationKit.generate_ci_problem(ShootingProblem(M=1),
     bp, prob, sol, period; alg = Tsit5(), abstol=1e-10, reltol=1e-8)
@@ -368,9 +368,9 @@ function contSolver(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, x
     end
     # Check if the continuation was successful (the parameter step was 1), if not fall back to ODE solver
     if brpo_sh.sol[end].p == 1.0
-        return brpo_sh.sol[end].x[1:5]
+        return brpo_sh.sol[end].x[1:end-1]
     elseif brpo_sh.sol[1].p == 1.0
-        return brpo_sh.sol[1].x[1:5]
+        return brpo_sh.sol[1].x[1:end-1]
     else
         if verbose > 0
             println("First point: ", brpo_sh.sol[1].p)
@@ -395,7 +395,7 @@ Get the period of the limit cycle.
 """
 function get_period(lc::Vector{Float64}, prob::ODEProblem)::Number
     # Long simulation
-    sol = DifferentialEquations.solve(prob, Tsit5(), tspan=(0.0, 500.0), u0=lc)::ODESolution
+    sol = DifferentialEquations.solve(prob, Tsit5(), tspan=(0.0, 100.0), u0=lc, maxiters=1e9)::ODESolution
     # Get local maximums
     maxs = []
     for i in 2:length(sol.t)-1
@@ -410,28 +410,28 @@ function get_period(lc::Vector{Float64}, prob::ODEProblem)::Number
 end
 
 """
-    param_map(x::Vector{Float64})::NamedTuple{(:gna, :gk, :gs, :gl), Tuple{Number, Number, Number, Number}}
+    param_map(x::Vector{Float64})::NamedTuple{(:g_Na_sf, :g_K_sf, :g_L_sf), Tuple{Number, Number, Number}}
 
 Map the parameters from a `Vector` to a `NamedTuple`.
 
 # Arguments
-- `x::Vector{Float64}`: The parameters in a `Vector` ordered as gna, gk, gs, gl. The noise parameter can be optionally included at the end.
+- `x::Vector{Float64}`: The parameters in a `Vector` ordered as gna, gk, gl. The noise parameter can be optionally included at the end.
 
 # Returns
 - `par::NamedTuple`: The parameters as a `NamedTuple`.
 """
-function param_map(x::Vector{Float64})::NamedTuple{(:gna, :gk, :gs, :gl), Tuple{Number, Number, Number, Number}}
+function param_map(x::Vector{Float64})::NamedTuple{(:g_Na_sf, :g_K_sf, :g_L_sf), Tuple{Number, Number, Number}}
     # Load global const parameters p
     par = p
     # Set the parameters from the state x
-    par = @set par.gna = x[1]
-    par = @set par.gk = x[2]
-    par = @set par.gl = x[3]
+    par = @set par.g_Na_sf = x[1]
+    par = @set par.g_K_sf = x[2]
+    par = @set par.g_L_sf = x[3]
     return par
 end
 
 """
-    param_map(x::Vector{Float64}, xlc::Vector{Float64})::NamedTuple{(:gna, :gk, :gs, :gl, :gna_step, :gk_step, :gs_step, :gl_step, :step), Tuple{Number, Number, Number, Number, Number, Number, Number, Number, Number}}
+    param_map(x::Vector{Float64}, xlc::Vector{Float64})::NamedTuple{(:g_Na_sf, :g_K_sf, :g_L_sf, :na_step, :k_step, :l_step, :step), Tuple{Number, Number, Number, Number, Number, Number, Number}}
 
 Map the parameters from a `Vector` to a `NamedTuple`.
 
@@ -444,17 +444,17 @@ Specific to the continuation solver.
 # Returns
 - `par::NamedTuple`: The parameters as a `NamedTuple`.
 """
-function param_map(x::Vector{Float64}, xlc::Vector{Float64})::NamedTuple{(:gna, :gk, :gs, :gl, :gna_step, :gk_step, :gs_step, :gl_step, :step), Tuple{Number, Number, Number, Number, Number, Number, Number, Number, Number}}
+function param_map(x::Vector{Float64}, xlc::Vector{Float64})::NamedTuple{(:g_Na_sf, :g_K_sf, :g_L_sf, :na_step, :k_step, :l_step, :step), Tuple{Number, Number, Number, Number, Number, Number, Number}}
     # Load global const parameters p
     par = p
     # Set the parameters from the state xlc (starting location for continuation)
-    par = @set par.gna = xlc[1]
-    par = @set par.gk = xlc[2]
-    par = @set par.gl = xlc[3]
+    par = @set par.g_Na_sf = xlc[1]
+    par = @set par.g_K_sf = xlc[2]
+    par = @set par.g_L_sf = xlc[3]
     # Set the continuation step sizes
-    par = @set par.gna_step = x[1] - xlc[1]
-    par = @set par.gk_step = x[2] - xlc[2]
-    par = @set par.gl_step = x[3] - xlc[3]
+    par = @set par.na_step = x[1] - xlc[1]
+    par = @set par.k_step = x[2] - xlc[2]
+    par = @set par.l_step = x[3] - xlc[3]
     return par
 end
 
@@ -464,24 +464,24 @@ const use_fast_ode = true
 file_type = use_continuation ? "cont_" : (use_fast_ode ? "fastODE_" : "fullODE")
 verbose = 2
 # Time to run the ODE for the data
-dataTime = 50000.0
+dataTime = 1000.0
 # Define the method specific settings and functions for MCMC
 if use_continuation
     println("Using continuation")
     paramMap(x,y) = param_map(x,y)
     const p = Model.params_cont
-    prob = ODEProblem(Model.ode_cont!, Model.ic, (0.0, dataTime), Model.params_cont, abstol=1e-10, reltol=1e-8, maxiters=1e7)
+    prob = ODEProblem(Model.ode_cont!, Model.ic_conv, (0.0, dataTime), Model.params_cont, abstol=1e-10, reltol=1e-8, maxiters=1e7)
     # Set up continuation solver
     lens = @optic _.step
     const bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, Model.params_cont, lens)
     solver(v, w, x, y, z, verbose) = contSolver(v, w, x, y, z, bp, verbose)
-    const opts_br = ContinuationPar(p_min = 0.0, p_max = 1.0, max_steps = 150, tol_stability = 1e-8, ds=1.0, dsmax=1.0, 
-    dsmin=1e-6, detect_bifurcation=0, detect_fold=false,)
+    const opts_br = ContinuationPar(p_min = 0.0, p_max = 1.0, max_steps = 50, tol_stability = 1e-8, ds=1.0, dsmax=1.0, 
+    detect_bifurcation=0, detect_fold=false, newton_options=NewtonPar(tol=1e-10))
 else
     println("Using ODE solver")
     paramMap(x, _) = param_map(x)
     const p = Model.params
-    prob = ODEProblem(Model.ode!, Model.ic, (0.0, dataTime), Model.params, abstol=1e-10, reltol=1e-8, maxiters=1e7)
+    prob = ODEProblem(Model.ode!, Model.ic_conv, (0.0, dataTime), Model.params, abstol=1e-10, reltol=1e-8, maxiters=1e7)
     if use_fast_ode
         println("Using fast ODE solver")
         solver = odeSolverCheap
@@ -494,13 +494,13 @@ end
 # Create the true data
 # True parameters
 pTrue = p
-pTrue = @set pTrue.gna = 110.0
-pTrue = @set pTrue.gk = 11.0
-pTrue = @set pTrue.gl = 0.25
+pTrue = @set pTrue.g_Na_sf = 1.5
+pTrue = @set pTrue.g_K_sf = 1.2
+pTrue = @set pTrue.g_L_sf = 0.8
 
 # Run ODE to converged limit cycle
 prob_true = remake(prob, p=pTrue)::ODEProblem
-sol = DifferentialEquations.solve(prob_true, Tsit5())::ODESolution
+sol = DifferentialEquations.solve(prob_true, Tsit5(), maxiters=1e9)::ODESolution
 if Tools.auto_converge_check(prob_true, sol[end], pTrue)
     println("Data is appropriately converged")
 else
@@ -520,7 +520,7 @@ println("Log likelihood of true parameters: ", ll(sol.u[end], odedata, 2.0, prob
 
 # Run MCMC
 numSamples = 1000*4*10 # 1000 samples per parameter before adaption (10% of the samples)
-chain, accepts = mcmc(numSamples, solver, [120.0, 13.0, 0.3, 1.5], prob, odedata, paramMap, verbose)
+chain, accepts = mcmc(numSamples, solver, [1.0, 1.0, 1.0, 1.5], prob, odedata, paramMap, verbose)
 
 # Plot results
 plot_params = (linewidth=2., dpi=300, size=(450,300))
@@ -538,7 +538,7 @@ posterior = chain[burnIn+1:end, :]
 
 # Plot posterior histograms
 paramNames = ["gNa" "gK" "gL" "σ"]
-pTrueWithNoise = deleteat!([Model.params..., 2.0], 3) # Remove gS from true parameters
+pTrueWithNoise = [pTrue.g_Na_sf, pTrue.g_K_sf, pTrue.g_L_sf, 2.0]
 for i in axes(posterior, 2)
     histogram(posterior[:, i], normalize=:pdf, title = "Posterior: "*paramNames[i], ylabel = "P(x)",
     legend = false; plot_params...)
@@ -560,7 +560,7 @@ tab = Tables.table([chain convert(Vector{Bool}, accepts)]; header=[paramNames...
 CSV.write(file_type*"chain.csv", tab)
 
 # Benchmark the MCMC
-b = @benchmarkable mcmc($numSamples, $solver, [120.0, 13.0, 0.3, 1.5], $prob, $odedata, $paramMap, $verbose)
+b = @benchmarkable mcmc($numSamples, $solver, [1.0, 1.0, 1.0, 1.5], $prob, $odedata, $paramMap, $verbose)
 t = run(b, seconds=120)
 
 BenchmarkTools.save(file_type*"mcmc_benchmark.json", t)
