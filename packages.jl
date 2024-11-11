@@ -14,5 +14,7 @@ Pkg.add([
     "Accessors",
     "NaNMath",
     "LaTeXStrings",
+    "Optim",
+    "DataFrames",
     ]
 )
