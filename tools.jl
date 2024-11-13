@@ -83,7 +83,8 @@ Specific to the continuation solver.
 """
 function param_map(x, xlc)::NamedTuple{(:g_Na_sf, :g_K_sf, :g_L_sf, :na_step, :k_step, :l_step, :step), Tuple{Number, Number, Number, Number, Number, Number, Number}}
     # Set the parameters from the state xlc (starting location for continuation)
-    par = @set Model.params_cont.g_Na_sf = xlc[1]
+    par = Model.params_cont
+    par = @set par.g_Na_sf = xlc[1]
     par = @set par.g_K_sf = xlc[2]
     par = @set par.g_L_sf = xlc[3]
     # Set the continuation step sizes
