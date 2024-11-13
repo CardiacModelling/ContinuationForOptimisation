@@ -106,7 +106,7 @@ function mcmc(numSamples::Integer, solver::Function, μ₀::Vector{Float64}, pro
         else
             llNew = ll(lcNew, data, σNew, remake(prob, p=paramMap(xNew, xNew))::ODEProblem, verbose)
             if verbose > 2
-                sol, = aligned_sol(lc, remake(prob, p=paramMap(x, x)), period)
+                sol, = Tools.aligned_sol(lc, remake(prob, p=paramMap(x, x)), period)
                 display(plot!(sol, label="Old"))
             end
         end
@@ -244,7 +244,7 @@ function ll(limitCycle::Vector{Float64}, data::Vector{Float64}, σ::Number, prob
         return -Inf
     end
     # Get estimate of data using parameters from p and the limit cycle
-    sol, = aligned_sol(limitCycle, prob, period)
+    sol, = Tools.aligned_sol(limitCycle, prob, period)
     # Calculate the log-likelihood of the data
     n = Normal(0, σ)
     if verbose > 2
@@ -376,7 +376,7 @@ dataTime = 1000.0
 # Define the method specific settings and functions for MCMC
 if use_continuation
     println("Using continuation")
-    paramMap(x,y) = param_map(x,y)
+    paramMap(x,y) = Tools.param_map(x,y)
     const p = Model.params_cont
     prob = ODEProblem(Model.ode_cont!, Model.ic_conv, (0.0, dataTime), Model.params_cont, abstol=1e-10, reltol=1e-8, maxiters=1e7)
     # Set up continuation solver
@@ -387,7 +387,7 @@ if use_continuation
     detect_bifurcation=0, detect_fold=false, newton_options=NewtonPar(tol=1e-10))
 else
     println("Using ODE solver")
-    paramMap(x, _) = param_map(x)
+    paramMap(x, _) = Tools.param_map(x)
     const p = Model.params
     prob = ODEProblem(Model.ode!, Model.ic_conv, (0.0, dataTime), Model.params, abstol=1e-10, reltol=1e-8, maxiters=1e7)
     if use_fast_ode

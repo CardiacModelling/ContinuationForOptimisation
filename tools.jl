@@ -19,7 +19,7 @@ function auto_converge_check(prob::ODEProblem, ic::Vector{Float64}, p::NamedTupl
 end
 
 """
-    aligned_sol(lc, prob::ODEProblem, period::Number = 0.0; save_only_V::Bool = true)
+    aligned_sol(lc, prob::ODEProblem, period::Number; save_only_V::Bool = true)
 
 Align the limit cycle in the solution to start at the max of V and fixes the timesteps for recording the data.
 
@@ -31,7 +31,6 @@ Align the limit cycle in the solution to start at the max of V and fixes the tim
 
 # Returns
 - `sol::ODESolution`: The aligned solution.
-- `period::Number`: The period of the limit cycle.
 """
 function aligned_sol(lc, prob::ODEProblem, period::Number; save_only_V::Bool = true)
     # Simulation of length 2*period to find the max of V
@@ -42,9 +41,9 @@ function aligned_sol(lc, prob::ODEProblem, period::Number; save_only_V::Bool = t
     sol = DifferentialEquations.solve(prob, Tsit5(); tspan = (0.0,t), u0=sol.prob.u0, save_everystep=false, save_start=false, maxiters=1e9)
     # Get the aligned solution
     if save_only_V
-        return DifferentialEquations.solve(prob, Tsit5(), saveat=0.01, save_idxs=Model.plot_idx, tspan=(0.0, period), u0=sol.u[end], maxiters=1e9, save_end = false)::ODESolution, period
+        return DifferentialEquations.solve(prob, Tsit5(), saveat=0.01, save_idxs=Model.plot_idx, tspan=(0.0, period), u0=sol.u[end], maxiters=1e9, save_end = false)::ODESolution
     else
-        return DifferentialEquations.solve(prob, Tsit5(), saveat=0.01, tspan=(0.0, period), u0=sol.u[end], maxiters=1e9, save_end = false)::ODESolution, period
+        return DifferentialEquations.solve(prob, Tsit5(), saveat=0.01, tspan=(0.0, period), u0=sol.u[end], maxiters=1e9, save_end = false)::ODESolution
     end
 end
 

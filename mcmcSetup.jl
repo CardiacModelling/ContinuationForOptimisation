@@ -40,8 +40,6 @@ function get_period(lc::Vector{Float64}, prob::ODEProblem)::Number
     return period
 end
 
-aligned_sol = Tools.aligned_sol
-
 function saveData()
     # Time to run the ODE for the data
     dataTime = 1000.0
@@ -66,7 +64,7 @@ function saveData()
 
     # Generate aligned data
     period = get_period(sol[end], prob_true)
-    sol_pulse, _ = aligned_sol(sol[end], prob_true, period)
+    sol_pulse = Tools.aligned_sol(sol[end], prob_true, period)
     # Add noise and plot
     odedata = Array(sol_pulse.u) + 2.0 * randn(size(sol_pulse))
     plot(sol_pulse, title="True data"; label="Simulation")
@@ -91,7 +89,7 @@ function optimiseParameters()
         prob = remake(prob, p=Tools.param_map(p))::ODEProblem
         # Converge
         sol = DifferentialEquations.solve(prob, Tsit5(), u0=Model.ic_conv, p=prob.p, tspan=(0.0, 1000.0), maxiters=1e9, save_everystep=false, save_start=false)
-        sol_pulse, _ = Tools.aligned_sol(sol(1000.0), prob, period)
+        sol_pulse = Tools.aligned_sol(sol(1000.0), prob, period)
         return sol_pulse.u
     end
 
