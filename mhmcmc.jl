@@ -109,7 +109,7 @@ function mcmc(numSamples::Integer, solver::Function, μ₀::Vector{Float64}, pro
         else
             llNew = ll(lcNew, data, σNew, remake(prob, p=paramMap(xNew, xNew))::ODEProblem, verbose)
             if verbose > 2
-                sol, = Tools.aligned_sol(lc, remake(prob, p=paramMap(x, x)), period)
+                sol = Tools.aligned_sol(lc, remake(prob, p=paramMap(x, x)), period)
                 display(plot!(sol, label="Old"))
             end
         end
@@ -247,7 +247,7 @@ function ll(limitCycle::Vector{Float64}, data::Vector{Float64}, σ::Number, prob
         return -Inf
     end
     # Get estimate of data using parameters from p and the limit cycle
-    sol, = Tools.aligned_sol(limitCycle, prob, period)
+    sol = Tools.aligned_sol(limitCycle, prob, period)
     # Calculate the log-likelihood of the data
     n = Normal(0, σ)
     if verbose > 2
@@ -366,8 +366,6 @@ function contSolver(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, x
         return odeSolverCheap(x, prob, lc, xlc, paramMap, verbose)
     end
 end
-
-aligned_sol = Tools.aligned_sol
 
 # Method selection and settings
 const use_continuation = true
