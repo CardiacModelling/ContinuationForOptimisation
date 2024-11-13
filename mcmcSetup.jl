@@ -102,7 +102,7 @@ function optimiseParameters()
 
     # Optimise
     p0 = [1.0, 1.0, 1.0]
-    res = Optim.optimize(cost, p0, LBFGS(), Optim.Options(show_trace=true))
+    res = Optim.optimize(cost, p0, NelderMead(; initial_simplex=Optim.AffineSimplexer(b=0.0)), Optim.Options(show_trace=true))
     println(res.minimizer)
     return res
 end
