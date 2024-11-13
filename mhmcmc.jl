@@ -2,7 +2,7 @@
 # Also stores and passes the current limit cycle to the next iteration
 using Distributions, LinearAlgebra, Random
 using BifurcationKit, DifferentialEquations, BenchmarkTools
-using CSV, Tables, Plots
+using CSV, Tables, Plots, DataFrames
 
 include("./model.jl")
 using .Model
@@ -372,16 +372,14 @@ aligned_sol = Tools.aligned_sol
 # Method selection and settings
 const use_continuation = true
 const use_fast_ode = true
-file_type = "results/mcmc/"*(use_continuation ? "cont_" : (use_fast_ode ? "fastODE_" : "fullODE"))
+file_type = "results/mcmc/"*(use_continuation ? "cont_" : (use_fast_ode ? "fastODE_" : "fullODE_"))
 verbose = 2
-# Time to run the ODE for the data
-dataTime = 1000.0
 # Define the method specific settings and functions for MCMC
 if use_continuation
     println("Using continuation")
     paramMap(x,y) = Tools.param_map(x,y)
     const p = Model.params_cont
-    prob = ODEProblem(Model.ode_cont!, Model.ic_conv, (0.0, dataTime), Model.params_cont, abstol=1e-10, reltol=1e-8, maxiters=1e7)
+    prob = ODEProblem(Model.ode_cont!, Model.ic_conv, (0.0, 1000.0), Model.params_cont, abstol=1e-10, reltol=1e-8, maxiters=1e7)
     # Set up continuation solver
     lens = @optic _.step
     const bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, Model.params_cont, lens)
@@ -392,7 +390,7 @@ else
     println("Using ODE solver")
     paramMap(x, _) = Tools.param_map(x)
     const p = Model.params
-    prob = ODEProblem(Model.ode!, Model.ic_conv, (0.0, dataTime), Model.params, abstol=1e-10, reltol=1e-8, maxiters=1e7)
+    prob = ODEProblem(Model.ode!, Model.ic_conv, (0.0, 1000.0), Model.params, abstol=1e-10, reltol=1e-8, maxiters=1e7)
     if use_fast_ode
         println("Using fast ODE solver")
         solver = odeSolverCheap
@@ -402,38 +400,19 @@ else
     end
 end
 
-# Create the true data
-# True parameters
-pTrue = p
-pTrue = @set pTrue.g_Na_sf = 1.5
-pTrue = @set pTrue.g_K_sf = 1.2
-pTrue = @set pTrue.g_L_sf = 0.8
+# Load the data
+data = CSV.read("results/mcmc/data.csv", DataFrame)
+t = data[:, 1]
+odedata = data[:, 2]
+const period = t[end]
 
-# Run ODE to converged limit cycle
-prob_true = remake(prob, p=pTrue)::ODEProblem
-sol = DifferentialEquations.solve(prob_true, Tsit5(), maxiters=1e9)::ODESolution
-if Tools.auto_converge_check(prob_true, sol[end], pTrue)
-    println("Data is appropriately converged")
-else
-    println("Data was NOT generated from a converged limit cycle")
-end
-
-# Generate aligned data
-const period = get_period(sol[end], prob_true)
-sol_pulse, _ = aligned_sol(sol[end], prob_true, period)
-# Add noise and plot
-odedata = Array(sol_pulse.u) + 2.0 * randn(size(sol_pulse))
-plot(sol_pulse, title="True data"; label="Simulation")
-display(plot!(sol_pulse.t, odedata, label="Data"))
-
-# Check the log likelihood of the true parameters
-println("Log likelihood of true parameters: ", ll(sol.u[end], odedata, 2.0, prob_true))
-
+initialGuess = [1.0, 1.0, 1.0, 2.0]
 # Run MCMC
-numSamples = 1000*4*10 # 1000 samples per parameter before adaption (10% of the samples)
-chain, accepts = mcmc(numSamples, solver, [1.0, 1.0, 1.0, 1.5], prob, odedata, paramMap, verbose)
+numSamples = 1000*length(initialGuess)*10 # 1000 samples per parameter before adaption (10% of the samples)
+chain, accepts = mcmc(numSamples, solver, initialGuess, prob, odedata, paramMap, verbose)
 
 # Write data to CSV
+paramNames = ["gNa" "gK" "gL" "σ"]
 tab = Tables.table([chain convert(Vector{Bool}, accepts)]; header=[paramNames..., "Accept"])
 CSV.write(file_type*"chain.csv", tab)
 
@@ -452,8 +431,7 @@ burnIn = round(Int, numSamples*0.25)
 posterior = chain[burnIn+1:end, :]
 
 # Plot posterior histograms
-paramNames = ["gNa" "gK" "gL" "σ"]
-pTrueWithNoise = [pTrue.g_Na_sf, pTrue.g_K_sf, pTrue.g_L_sf, 2.0]
+pTrueWithNoise = [1.0, 1.0, 1.0, 2.0]
 for i in axes(posterior, 2)
     histogram(posterior[:, i], normalize=:pdf, title = "Posterior: "*paramNames[i], ylabel = "P(x)",
     legend = false; plot_params...)
@@ -471,7 +449,7 @@ vline!([numSamples*0.1+0.5], label="Adaption", color=:green, linewidth=1.5, line
 savefig(file_type*"convergence.pdf")
 
 # Benchmark the MCMC
-b = @benchmarkable mcmc($numSamples, $solver, [1.0, 1.0, 1.0, 1.5], $prob, $odedata, $paramMap, $verbose)
+b = @benchmarkable mcmc($numSamples, $solver, initialGuess, $prob, $odedata, $paramMap, $verbose)
 t = run(b, seconds=120)
 
 BenchmarkTools.save(file_type*"mcmc_benchmark.json", t)
