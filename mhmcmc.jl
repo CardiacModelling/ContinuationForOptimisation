@@ -1,6 +1,6 @@
 # Metropolis Hastings MCMC to be used for both ODE solver and continuation solver
 # Also stores and passes the current limit cycle to the next iteration
-using Distributions, LinearAlgebra
+using Distributions, LinearAlgebra, Random
 using BifurcationKit, DifferentialEquations, BenchmarkTools
 using CSV, Tables, Plots
 
@@ -9,6 +9,9 @@ using .Model
 
 include("./tools.jl")
 using .Tools
+
+# Set seed
+Random.seed!(1)
 
 """
     converge(ic, solver, check, verbose=1)
