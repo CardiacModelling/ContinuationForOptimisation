@@ -58,7 +58,7 @@ function saveData()
     end
 
     # Generate aligned data
-    period = get_period(sol[end], prob_true)
+    period = floor(get_period(sol[end], prob)/0.01)*0.01
     sol_pulse = Tools.aligned_sol(sol[end], prob, period)
     # Add noise and plot
     odedata = Array(sol_pulse.u) + 2.0 * randn(size(sol_pulse))
@@ -71,7 +71,7 @@ end
 
 function optimiseParameters()
     # Load data
-    data = CSV.read("results/mcmc/data.csv", DataFrame)
+    data = CSV.read("results/mcmc/data.csv", DataFrame, header=false)
     t = data[:, 1]
     data = data[:, 2]
     period = t[end]

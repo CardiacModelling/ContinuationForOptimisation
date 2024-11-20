@@ -402,7 +402,7 @@ else
 end
 
 # Load the data
-data = CSV.read("results/mcmc/data.csv", DataFrame)
+data = CSV.read("results/mcmc/data.csv", DataFrame, header=false)
 t = data[:, 1]
 odedata = data[:, 2]
 const period = t[end]

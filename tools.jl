@@ -41,9 +41,9 @@ function aligned_sol(lc, prob::ODEProblem, period::Number; save_only_V::Bool = t
     sol = DifferentialEquations.solve(prob, Tsit5(); tspan = (0.0,t), u0=sol.prob.u0, save_everystep=false, save_start=false, maxiters=1e9)
     # Get the aligned solution
     if save_only_V
-        return DifferentialEquations.solve(prob, Tsit5(), saveat=0.01, save_idxs=Model.plot_idx, tspan=(0.0, period), u0=sol.u[end], maxiters=1e9, save_end = false)::ODESolution
+        return DifferentialEquations.solve(prob, Tsit5(), saveat=0.01, save_idxs=Model.plot_idx, tspan=(0.0, period), u0=sol.u[end], maxiters=1e9)::ODESolution
     else
-        return DifferentialEquations.solve(prob, Tsit5(), saveat=0.01, tspan=(0.0, period), u0=sol.u[end], maxiters=1e9, save_end = false)::ODESolution
+        return DifferentialEquations.solve(prob, Tsit5(), saveat=0.01, tspan=(0.0, period), u0=sol.u[end], maxiters=1e9)::ODESolution
     end
 end
 
