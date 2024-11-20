@@ -1,7 +1,7 @@
 # Metropolis Hastings MCMC to be used for both ODE solver and continuation solver
 # Also stores and passes the current limit cycle to the next iteration
 using Distributions, LinearAlgebra, Random
-using BifurcationKit, DifferentialEquations, BenchmarkTools
+using BifurcationKit, DifferentialEquations
 using CSV, Tables, Plots, DataFrames
 
 include("./model.jl")
@@ -407,7 +407,8 @@ const period = t[end]
 initialGuess = [1.0, 1.0, 1.0, 2.0]
 # Run MCMC
 numSamples = 1000*length(initialGuess)*10 # 1000 samples per parameter before adaption (10% of the samples)
-chain, accepts = mcmc(numSamples, solver, initialGuess, prob, odedata, paramMap, verbose)
+mcmc(100, solver, initialGuess, prob, odedata, paramMap, verbose)
+@time chain, accepts = mcmc(numSamples, solver, initialGuess, prob, odedata, paramMap, verbose)
 
 # Write data to CSV
 paramNames = ["gNa" "gK" "gL" "σ"]
@@ -446,8 +447,3 @@ vline!([numSamples*0.25+0.5], label="Burn In", color=:red, linewidth=1.5, linest
 vline!([numSamples*0.1+0.5], label="Adaption", color=:green, linewidth=1.5, linestyle=:dot)
 savefig(file_type*"convergence.pdf")
 
-# Benchmark the MCMC
-b = @benchmarkable mcmc($numSamples, $solver, initialGuess, $prob, $odedata, $paramMap, $verbose)
-t = run(b, seconds=120)
-
-BenchmarkTools.save(file_type*"mcmc_benchmark.json", t)
