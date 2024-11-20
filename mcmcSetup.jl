@@ -62,11 +62,26 @@ function saveData()
     sol_pulse = Tools.aligned_sol(sol[end], prob, period)
     # Add noise and plot
     odedata = Array(sol_pulse.u) + 2.0 * randn(size(sol_pulse))
-    plot(sol_pulse, title="True data"; label="Simulation")
-    display(plot!(sol_pulse.t, odedata, label="Data"))
 
     # Save the data
     CSV.write("results/mcmc/data.csv", Tables.table([sol_pulse.t odedata]), writeheader=false)
+
+    return sol_pulse, odedata, period
+end
+
+function plotData(sol, data, mle, period)
+    function rmse(data, sol)
+        return sqrt(sum((data - sol.u).^2)/length(data))
+    end
+    plot(sol, title="True data"; label="True solution - RMSE: "*string(round(rmse(data, sol),sigdigits=4)))
+    prob = ODEProblem(Model.ode!, Model.ic, (0.0, 1000.0), abstol=1e-10, reltol=1e-8, maxiters=1e7)
+    prob = remake(prob, p=Tools.param_map(mle))::ODEProblem
+    solMLE = DifferentialEquations.solve(prob, Tsit5(), maxiters=1e9)::ODESolution
+    solMLE = Tools.aligned_sol(solMLE[end], prob, period)
+    plot!(solMLE, label="MLE - RMSE: "*string(round(rmse(data, solMLE), sigdigits=4)))
+    plot!(sol_pulse.t, data, label="Data")
+    savefig("results/mcmc/data.pdf")
+    return solMLE
 end
 
 function optimiseParameters()
@@ -102,6 +117,8 @@ function optimiseParameters()
     return res
 end
 
-saveData()
+sol_pulse, odedata, period = saveData()
 
 optimiseParameters()
+
+solMLE = plotData(sol_pulse, odedata, [0.984220541002206, 1.0081306487170472, 1.1943953497519157], period)
