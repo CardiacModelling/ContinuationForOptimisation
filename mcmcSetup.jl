@@ -41,22 +41,17 @@ function get_period(lc::Vector{Float64}, prob::ODEProblem)::Number
 end
 
 function saveData()
-    # Time to run the ODE for the data
-    dataTime = 1000.0
     # Define the method specific settings and functions for MCMC
-    prob = ODEProblem(Model.ode!, Model.ic_conv, (0.0, dataTime), Model.params, abstol=1e-10, reltol=1e-8, maxiters=1e7)
+    prob = ODEProblem(Model.ode!, Model.ic, (0.0, 1000.0), Model.params, abstol=1e-10, reltol=1e-8, maxiters=1e7)
 
     # Create the true data
     # True parameters
-    pTrue = deepcopy(Model.params)
-    pTrue = @set pTrue.g_Na_sf = 1.0
-    pTrue = @set pTrue.g_K_sf = 1.0
-    pTrue = @set pTrue.g_L_sf = 1.0
+    pTrue = Tools.param_map([1.0, 1.0, 1.0])
+    prob = remake(prob, p=pTrue)::ODEProblem
 
     # Run ODE to converged limit cycle
-    prob_true = remake(prob, p=pTrue)::ODEProblem
-    sol = DifferentialEquations.solve(prob_true, Tsit5(), maxiters=1e9)::ODESolution
-    if Tools.auto_converge_check(prob_true, sol[end], pTrue)
+    sol = DifferentialEquations.solve(prob, Tsit5(), maxiters=1e9, save_everystep=false)::ODESolution
+    if Tools.auto_converge_check(prob, sol[end], pTrue)
         println("Data is appropriately converged")
     else
         println("Data was NOT generated from a converged limit cycle")
@@ -64,7 +59,7 @@ function saveData()
 
     # Generate aligned data
     period = get_period(sol[end], prob_true)
-    sol_pulse = Tools.aligned_sol(sol[end], prob_true, period)
+    sol_pulse = Tools.aligned_sol(sol[end], prob, period)
     # Add noise and plot
     odedata = Array(sol_pulse.u) + 2.0 * randn(size(sol_pulse))
     plot(sol_pulse, title="True data"; label="Simulation")
@@ -82,14 +77,14 @@ function optimiseParameters()
     period = t[end]
 
     # Define optimisation variables and functions
-    prob = ODEProblem(Model.ode!, Model.ic_conv, (0.0, 1000.0), Model.params, abstol=1e-10, reltol=1e-8, maxiters=1e7)
+    prob = ODEProblem(Model.ode!, Model.ic, (0.0, 1000.0); p=Model.params, abstol=1e-10, reltol=1e-8, maxiters=1e9)
 
     # Define model simulation function
     function model_simulator(p)
         prob = remake(prob, p=Tools.param_map(p))::ODEProblem
         # Converge
-        sol = DifferentialEquations.solve(prob, Tsit5(), u0=Model.ic_conv, p=prob.p, tspan=(0.0, 1000.0), maxiters=1e9, save_everystep=false, save_start=false)
-        sol_pulse = Tools.aligned_sol(sol(1000.0), prob, period)
+        sol = DifferentialEquations.solve(prob, Tsit5(), save_everystep=false, save_start=false)
+        sol_pulse = Tools.aligned_sol(sol[end], prob, period)
         return sol_pulse.u
     end
 
