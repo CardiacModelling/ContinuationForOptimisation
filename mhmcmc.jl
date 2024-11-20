@@ -63,11 +63,13 @@ Run an adaptive Metropolis-Hastings MCMC to find the posterior distribution of t
 # Returns
 - `chain::Matrix{Number}`: The chain of parameters.
 - `accepts::Vector{Float64}`: The acceptance rate of the proposals.
+- `lls::Vector{Float64}`: The log-likelihoods of the chain.
 """
 function mcmc(numSamples::Integer, solver::Function, μ₀::Vector{Float64}, prob::ODEProblem, data::Vector{Float64}, paramMap::Function, verbose::Integer=1)
     # Set up and preallocate variables
     chain = zeros(numSamples, length(μ₀))
     accepts = zeros(numSamples)
+    lls = zeros(numSamples)
     x = copy(μ₀)
     σ = x[end]
     a = 1.0
@@ -141,6 +143,7 @@ function mcmc(numSamples::Integer, solver::Function, μ₀::Vector{Float64}, pro
             end
             accepts[i] = 0
         end
+        lls[i] = llOld
         if verbose > 0 && i > 100
             println("Local acceptance rate: ", sum(accepts[i-99:i]), "%")
         end
@@ -169,7 +172,7 @@ function mcmc(numSamples::Integer, solver::Function, μ₀::Vector{Float64}, pro
             end
         end
     end
-    return chain, accepts
+    return chain, accepts, lls
 end
 
 """
@@ -408,7 +411,7 @@ initialGuess = [1.0, 1.0, 1.0, 2.0]
 # Run MCMC
 numSamples = 1000*length(initialGuess)*10 # 1000 samples per parameter before adaption (10% of the samples)
 mcmc(100, solver, initialGuess, prob, odedata, paramMap, verbose)
-@time chain, accepts = mcmc(numSamples, solver, initialGuess, prob, odedata, paramMap, verbose)
+@time chain, accepts, lls = mcmc(numSamples, solver, initialGuess, prob, odedata, paramMap, verbose)
 
 # Write data to CSV
 paramNames = ["gNa" "gK" "gL" "σ"]
