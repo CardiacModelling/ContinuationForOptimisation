@@ -72,11 +72,11 @@ savefig("results/diagrams/possibleProblems.pdf")
 frequency = 790.0
 
 x = 0:0.0001:1
-y = @. 0.9*exp(-3x)+0.1+0.01*sin(frequency*x)
+y = @. 0.9*exp(-4.8x)+0.1+0.003*sin(frequency*x)
 plot(x, y, ylim=(0,1), xlim=(0,1), legend=false, yticks=nothing, xticks=nothing, xlabel="Time", 
 ylabel="Slow Variable", left_margin=5Plots.mm; dpi=plotParams.dpi, size=plotParams.size, linewidth=1.25)
 
-lens!([0.95, 1.0], [0.13, 0.18], inset = (1, bbox(0.5, 0.1, 0.4, 0.4)), xticks=nothing, 
+lens!([0.95, 1.0], [0.10, 0.125], inset = (1, bbox(0.5, 0.1, 0.4, 0.4)), xticks=nothing, 
 yticks=nothing, label="", title="Converged", titlefontcolor=:darkgreen, titlefontsize=10, 
 foreground_color_legend=nothing, framestyle=:box)
 # Alignment on the period isn't done in the actual convergence check, but we include many more oscillations than we can show in this figure
