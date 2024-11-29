@@ -69,16 +69,19 @@ function saveData()
     return sol_pulse, odedata, period
 end
 
+function ℓ(data, sol)
+    σ = 2.0
+    n = length(data)
+    return -n*log(2π)/2 - n*log(σ^2)/2 - 1/(2σ^2)*sum((data - sol.u).^2)
+end
+
 function plotData(sol, data, mle, period)
-    function rmse(data, sol)
-        return sqrt(sum((data - sol.u).^2)/length(data))
-    end
-    plot(sol, title="True data"; label="True solution - RMSE: "*string(round(rmse(data, sol),sigdigits=4)))
+    plot(sol, title="True data"; label="True solution - ℓ: "*string(round(ℓ(data, sol),sigdigits=4)))
     prob = ODEProblem(Model.ode!, Model.ic, (0.0, 1000.0), abstol=1e-10, reltol=1e-8, maxiters=1e7)
     prob = remake(prob, p=Tools.param_map(mle))::ODEProblem
     solMLE = DifferentialEquations.solve(prob, Tsit5(), maxiters=1e9)::ODESolution
     solMLE = Tools.aligned_sol(solMLE[end], prob, period)
-    plot!(solMLE, label="MLE - RMSE: "*string(round(rmse(data, solMLE), sigdigits=4)))
+    plot!(solMLE, label="MLE - ℓ: "*string(round(ℓ(data, solMLE), sigdigits=4)))
     plot!(sol_pulse.t, data, label="Data")
     savefig("results/mcmc/data.pdf")
     return solMLE
@@ -106,8 +109,7 @@ function optimiseParameters()
     # Define the cost function
     function cost(p)
         sim = model_simulator(p)
-        c = sum((data - sim).^2)
-        return c
+        return -ℓ(data, sim)
     end
 
     # Optimise
