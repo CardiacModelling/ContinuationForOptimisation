@@ -66,8 +66,6 @@ function ode_cont!(dz, z, p, t=0)
 	ko = 3.8
 
 	@unpack g_Na_sf, g_K_sf, g_L_sf, na_step, k_step, l_step, step = p
-
-	V, m, h, n = z
 	
     g_Na_sf = g_Na_sf + na_step*step
     g_K_sf = g_K_sf + k_step*step
