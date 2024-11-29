@@ -127,11 +127,13 @@ t = run(bg, seconds=20)
 t = BenchmarkTools.load("results/simTimings/data.json")[1]
 plot(t["Small"]["ODE"], st=:box, yaxis=:log10, dpi=300, size=(450,300), linewidth=0, markerstrokewidth=0, title="Small Perturbation")
 plot!(t["Small"]["Cont"], st=:box, yaxis=:log10, legend=:bottomleft, xaxis=nothing, linewidth=0, markerstrokewidth=0,
-ylabel="Time (s)", ylim=(0.05e9, 1e9), yticks=([0.05e9, 0.1e9, 0.2e9, 0.5e9, 1e9], ["0.05", "0.1", "0.2", "0.5", "1.0"]))
+ylabel="Time (s)", ylim=(0.05e9, 1e9), yformatter=x->x/1e9)
+yaxis!(minorgrid=true)
 savefig("results/simTimings/smallStep/smallTimings.pdf")
 plot(t["Large"]["ODE"], st=:box, yaxis=:log10, dpi=300, size=(450,300), title="Large Perturbation", linewidth=0, markerstrokewidth=0)
 plot!(t["Large"]["Cont"], st=:box, yaxis=:log10, legend=:topleft, xaxis=nothing, linewidth=0, markerstrokewidth=0,
-ylabel="Time (s)", ylim=(0.5e9,3.0e9), yticks=([0.5e9, 1e9, 2e9, 3e9], ["0.5", "1.0", "2.0", "3.0"]))
+ylabel="Time (s)", ylim=(0.5e9,3.0e9), yformatter=x->x/1e9)
+yaxis!(minorgrid=true)
 savefig("results/simTimings/largeStep/largeTimings.pdf")
 
 BenchmarkTools.save("results/simTimings/data.json", t)
