@@ -2,7 +2,7 @@
 # Also stores and passes the current limit cycle to the next iteration
 using Distributions, LinearAlgebra, Random
 using BifurcationKit, DifferentialEquations
-using CSV, Tables, Plots, DataFrames
+using CSV, Tables, Plots, DataFrames, Measures
 
 include("./model.jl")
 using .Model
@@ -419,7 +419,7 @@ tab = Tables.table([chain lls convert(Vector{Bool}, accepts)]; header=[paramName
 CSV.write(file_type*"chain.csv", tab)
 
 # Plot results
-plot_params = (linewidth=2., dpi=300, size=(450,300))
+plot_params = (linewidth=2., dpi=300, size=(450,300), margin=5mm)
 
 # Plot acceptance rate
 plot([mean(accepts[max(i-499,1):i]) for i in 1:numSamples], title="Acceptance Rate", xlabel="Iteration",
