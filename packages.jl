@@ -16,5 +16,6 @@ Pkg.add([
     "LaTeXStrings",
     "Optim",
     "DataFrames",
+    "Measures",
     ]
 )
