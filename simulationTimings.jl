@@ -124,7 +124,7 @@ end
 
 println("Reached the end of the script. Just running benchmark now.")
 t = run(bg, seconds=20)
-t = BenchmarkTools.load("results/simTimings/data.json")[1]
+
 plot(t["Small"]["ODE"], st=:box, yaxis=:log10, dpi=300, size=(450,300), linewidth=0, markerstrokewidth=0, title="Small Perturbation")
 plot!(t["Small"]["Cont"], st=:box, yaxis=:log10, legend=:bottomleft, xaxis=nothing, linewidth=0, markerstrokewidth=0,
 ylabel="Time (s)", ylim=(0.05e9, 1e9), yformatter=x->x/1e9)
