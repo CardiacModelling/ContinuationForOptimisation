@@ -448,11 +448,11 @@ for i in axes(posterior, 2)
 end
 
 # Plot parameter convergence
-plot((chain'./pTrueWithNoise)', label=paramNames, title="Parameter Convergence", 
-xlabel="Iteration", ylabel="Parameter Value (Relative to Truth)", xlim=(1,numSamples); 
+order = [4, 3, 2, 1]
+plot(chain[:,order]./pTrueWithNoise[order]', label=paramNames[order'], title="Parameter Convergence", 
+xlabel="Iteration", ylabel="Parameter Value (Relative to Truth)", xlim=(1,numSamples), legend=:topright; 
 plot_params...)
 hline!([1.0], label="Truth", color=:black, linewidth=1.5)
 vline!([numSamples*0.25+0.5], label="Burn In", color=:red, linewidth=1.5, linestyle=:dot)
 vline!([numSamples*0.1+0.5], label="Adaption", color=:green, linewidth=1.5, linestyle=:dot)
 savefig(file_type*"convergence.pdf")
-
