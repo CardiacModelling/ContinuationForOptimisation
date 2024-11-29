@@ -415,7 +415,7 @@ mcmc(100, solver, initialGuess, prob, odedata, paramMap, verbose)
 
 # Write data to CSV
 paramNames = ["gNa" "gK" "gL" "σ"]
-tab = Tables.table([chain convert(Vector{Bool}, accepts)]; header=[paramNames..., "Accept"])
+tab = Tables.table([chain lls convert(Vector{Bool}, accepts)]; header=[paramNames..., "LogLikelihood","Accept"])
 CSV.write(file_type*"chain.csv", tab)
 
 # Plot results
@@ -427,6 +427,12 @@ ylim=(0,1), label="Acceptance Rate", xlim = (1,numSamples); plot_params...)
 vline!([numSamples*0.25+0.5], label="Burn In", color=:red, linewidth=1.5, linestyle=:dot)
 vline!([numSamples*0.1+0.5], label="Adaption", color=:green, linewidth=1.5, linestyle=:dot)
 savefig(file_type*"acceptance.pdf")
+
+# Plot log likelihood
+plot(lls, title="Log Likelihood", xlabel="Iteration", ylabel="Log Likelihood", xlim=(1,numSamples); plot_params...)
+vline!([numSamples*0.25+0.5], label="Burn In", color=:red, linewidth=1.5, linestyle=:dot)
+vline!([numSamples*0.1+0.5], label="Adaption", color=:green, linewidth=1.5, linestyle=:dot)
+savefig(file_type*"loglikelihood.pdf")
 
 # Remove burn in stage to get posterior distribution
 burnIn = round(Int, numSamples*0.25)
