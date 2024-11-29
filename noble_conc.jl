@@ -55,7 +55,7 @@ function noble_conc!(dz, z, p, t=0)
 	dz[3] = alpha_h*(1-h)-beta_h*h
 	dz[4] = alpha_n*(1-n)-beta_n*n
 	dz[5] = conv_rate*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
-	dz[6] = conv_rate*(-(i_K)/(1000*F) - (ki-ki_target)/20.0)
+	dz[6] = conv_rate*(-(i_K+i_Leak)/(1000*F) - (ki-ki_target)/20.0)
 
 	dz
 end
@@ -64,15 +64,17 @@ end
 params = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, conv_rate=1.0)
 
 # initial condition
-# z0 = [-87.0, 0.01, 0.8, 0.01, 30, 160]
+z0 = [-87.0, 0.01, 0.8, 0.01, 30, 160]
+prob_de = ODEProblem(noble_conc!, z0, (0.,10000.15), params, reltol=1e-8, abstol=1e-10)
+sol = DifferentialEquations.solve(prob_de, Tsit5(), maxiters=1e9, save_everystep=false)
 
-# initial condition converged for all sf=1, 1000sec, conv_rate=1.0
-z0 = [-68.4831140261365,
-0.08798274879055851,
-0.53892786879803,
-0.44814247723133743,
-36.928537846865815,
-153.9951030364927]
+# initial condition converged for all sf=1, 10000.15sec, conv_rate=1.0
+z0 = [-78.72748461267115, 
+0.05085091703315501, 
+0.8013829807650223, 
+0.5390711265273838, 
+36.95647041868735, 
+153.78708878263234]
 
 # perturb the parameters to tune the convergence rate
 params = @set params.g_Na_sf=1.1
