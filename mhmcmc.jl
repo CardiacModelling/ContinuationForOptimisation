@@ -422,7 +422,7 @@ CSV.write(file_type*"chain.csv", tab)
 plot_params = (linewidth=2., dpi=300, size=(450,300))
 
 # Plot acceptance rate
-plot([mean(accepts[1:i]) for i in 1:numSamples], title="Acceptance Rate", xlabel="Iteration", ylabel="Cumulative Acceptance Rate",
+plot([mean(accepts[max(i-499,1):i]) for i in 1:numSamples], title="Acceptance Rate", xlabel="Iteration",
 ylim=(0,1), label="Acceptance Rate", xlim = (1,numSamples); plot_params...)
 vline!([numSamples*0.25+0.5], label="Burn In", color=:red, linewidth=1.5, linestyle=:dot)
 vline!([numSamples*0.1+0.5], label="Adaption", color=:green, linewidth=1.5, linestyle=:dot)
