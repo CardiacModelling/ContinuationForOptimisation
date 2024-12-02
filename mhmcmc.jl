@@ -59,9 +59,10 @@ Run an adaptive Metropolis-Hastings MCMC to find the posterior distribution of t
 - `data`: The data to compare the limit cycle to.
 - `paramMap::Function`: The function to map the parameters from a `Vector` to a `NamedTuple`.
 - `start::Tuple=()`: Start MCMC from a previous iteration (defaults to empty tuple to start fresh). Supply a tuple of the previous iterations data from JLD2.
+- `record::Boolean`=true: Save the current state to a JLD2 file and append results to a CSV.
 - `verbose::Integer=1`: The verbosity level (0=None, 1=Minimal, 2=Standard, 3=Debug).
 """
-function mcmc(numSamples::Integer, solver::Function, μ₀, prob::ODEProblem, data, paramMap::Function, start::Tuple=(), verbose::Integer=1)
+function mcmc(numSamples::Integer, solver::Function, μ₀, prob::ODEProblem, data, paramMap::Function, start::Tuple=(), record::Boolean=true, verbose::Integer=1)
     # Set up and preallocate variables
     x = copy(μ₀)
     prob = remake(prob, p=paramMap(x, x), u0=Model.ic_conv)::ODEProblem
@@ -176,10 +177,12 @@ function mcmc(numSamples::Integer, solver::Function, μ₀, prob::ODEProblem, da
             end
         end
         # Update CSV
-        CSV.write(file_type*"chain.csv", DataFrame([i x... llOld accept], :auto), append=true)
-        # Store MCMC state
-        start = (i, x, lc, llOld, a, Σ, μ₀)
-        JLD2.save_object(file_type*"saved_state.jld2", start)
+        if record
+            CSV.write(file_type*"chain.csv", DataFrame([i x... llOld accept], :auto), append=true)
+            # Store MCMC state
+            start = (i, x, lc, llOld, a, Σ, μ₀)
+            JLD2.save_object(file_type*"saved_state.jld2", start)
+        end
         println(now())
     end
     return chain, accepts, lls
@@ -429,10 +432,10 @@ const period = t[end]
 initialGuess = [0.9956494280601382, 0.9974120177992098, 0.9807640816954317, 1.5]
 # Run MCMC
 numSamples = 1000*length(initialGuess)*10 # 1000 samples per parameter before adaption (10% of the samples)
-mcmc(100, solver, initialGuess, prob, odedata, paramMap, start, verbose)
+mcmc(100, solver, initialGuess, prob, odedata, paramMap, start, false, verbose)
 println("Actual MCMC run starting now")
 println(now())
-mcmc(numSamples, solver, initialGuess, prob, odedata, paramMap, start, verbose)
+mcmc(numSamples, solver, initialGuess, prob, odedata, paramMap, start, true, verbose)
 
 # Read the chain data from the CSV file
 data = CSV.read(file_type*"chain.csv", DataFrame)
