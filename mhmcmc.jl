@@ -2,7 +2,7 @@
 # Also stores and passes the current limit cycle to the next iteration
 using Distributions, LinearAlgebra, Random
 using BifurcationKit, DifferentialEquations
-using CSV, Tables, Plots, DataFrames, Measures
+using CSV, Tables, Plots, DataFrames, Measures, JLD2, Dates
 
 include("./model.jl")
 using .Model
@@ -58,42 +58,51 @@ Run an adaptive Metropolis-Hastings MCMC to find the posterior distribution of t
 - `prob::ODEProblem`: The ODEProblem for the model.
 - `data`: The data to compare the limit cycle to.
 - `paramMap::Function`: The function to map the parameters from a `Vector` to a `NamedTuple`.
+- `start::Tuple=()`: Start MCMC from a previous iteration (defaults to empty tuple to start fresh). Supply a tuple of the previous iterations data from JLD2.
 - `verbose::Integer=1`: The verbosity level (0=None, 1=Minimal, 2=Standard, 3=Debug).
-
-# Returns
-- `chain::Matrix{Number}`: The chain of parameters.
-- `accepts::Vector{Float64}`: The acceptance rate of the proposals.
-- `lls::Vector{Float64}`: The log-likelihoods of the chain.
 """
-function mcmc(numSamples::Integer, solver::Function, μ₀, prob::ODEProblem, data, paramMap::Function, verbose::Integer=1)
+function mcmc(numSamples::Integer, solver::Function, μ₀, prob::ODEProblem, data, paramMap::Function, start::Tuple=(), verbose::Integer=1)
     # Set up and preallocate variables
-    chain = zeros(numSamples, length(μ₀))
-    accepts = zeros(numSamples)
-    lls = zeros(numSamples)
     x = copy(μ₀)
-    σ = x[end]
-    a = 1.0
-    adaptionStart = ceil(Int, numSamples*0.1) # Start adaptive covariance after 10% of samples
-    Σ = Hermitian(diagm(μ₀/10000))
     prob = remake(prob, p=paramMap(x, x), u0=Model.ic_conv)::ODEProblem
-    lc = converge(Model.ic_conv, (ic) -> solver(x, prob, ic, x, paramMap, verbose), (ic) -> Tools.auto_converge_check(prob, ic, paramMap(x, x)), verbose)
-    if lc === nothing
-        lc = Model.ic_conv
-        llOld = -Inf
+    adaptionStart = ceil(Int, numSamples*0.1) # Start adaptive covariance after 10% of samples
+    if isempty(start)
+        chain = zeros(numSamples, length(μ₀))
+        accepts = zeros(numSamples)
+        lls = zeros(numSamples)
+        σ = x[end]
+        a = 1.0
+        Σ = Hermitian(diagm(μ₀/10000))
+        lc = converge(Model.ic_conv, (ic) -> solver(x, prob, ic, x, paramMap, verbose), (ic) -> Tools.auto_converge_check(prob, ic, paramMap(x, x)), verbose)
+        if lc === nothing
+            lc = Model.ic_conv
+            llOld = -Inf
+        else
+            llOld = ll(lc, data, σ, prob)
+        end
+        iteration = 0 # Current iteration
+        if verbose > 0
+            println("========        Starting MCMC        ========")
+            println("Initial parameters: ", x[1:end-1])
+            println("Initial noise: ", σ)
+            println("Initial limit cycle: ", lc)
+            println("Number of samples: ", numSamples)
+            println("=============================================")
+        end
     else
-        llOld = ll(lc, data, σ, prob)
-    end
-
-    if verbose > 0
-        println("========        Starting MCMC        ========")
-        println("Initial parameters: ", x[1:end-1])
-        println("Initial noise: ", σ)
-        println("Initial limit cycle: ", lc)
-        println("Number of samples: ", numSamples)
-        println("=============================================")
+        iteration, x, lc, llOld, a, Σ, μ₀ = start
+        σ = x[end]
+        if verbose > 0
+            println("======== Continuing MCMC from previous state ========")
+            println("Current parameters: ", x[1:end-1])
+            println("Current noise: ", σ)
+            println("Current limit cycle: ", lc)
+            println("Number of samples: ", numSamples)
+            println("====================================================")
+        end
     end
     # Iterate through MCMC steps
-    for i in 1:numSamples
+    for i in iteration+1:numSamples # Check this order of operations
         if verbose > 0
             println("========         Iteration ", i, "         ========")
             println("Current parameters: ", x[1:end-1])
@@ -136,18 +145,16 @@ function mcmc(numSamples::Integer, solver::Function, μ₀, prob::ODEProblem, da
             σ = σNew
             lc = lcNew
             llOld = llNew
-            accepts[i] = 1
+            accept = 1
         else
             if verbose > 0
                 println("- Proposal rejected")
             end
-            accepts[i] = 0
+            accept = 0
         end
-        lls[i] = llOld
         if verbose > 0 && i > 100
             println("Local acceptance rate: ", sum(accepts[i-99:i]), "%")
         end
-        chain[i, :] = x
         # Adapt the proposal distribution
         if i == adaptionStart + 1 && verbose > 0
             println("Adaption started")
@@ -157,10 +164,7 @@ function mcmc(numSamples::Integer, solver::Function, μ₀, prob::ODEProblem, da
             γ = (s+1)^-0.6
             Σ = Hermitian((1-γ)*Σ + γ*(x - μ₀)*(x - μ₀)')
             μ₀ = (1-γ)*μ₀ + γ*x
-            a *= exp(γ*(accepts[i] - 0.25))
-            if verbose > 0
-                println("Current acceptance rate: ", sum(accepts)/i*100, "%")
-            end
+            a *= exp(γ*(accept - 0.25))
             if verbose > 1
                 println("Adaption step: ", s)
             end
@@ -171,6 +175,12 @@ function mcmc(numSamples::Integer, solver::Function, μ₀, prob::ODEProblem, da
                 println("a: ", a)
             end
         end
+        # Update CSV
+        CSV.write(file_type*"chain.csv", DataFrame([i x... llOld accept], :auto), append=true)
+        # Store MCMC state
+        start = (i, x, lc, llOld, a, Σ, μ₀)
+        JLD2.save_object(file_type*"saved_state.jld2", start)
+        println(now())
     end
     return chain, accepts, lls
 end
@@ -373,8 +383,9 @@ end
 # Method selection and settings
 const use_continuation = true
 const use_fast_ode = true
-file_type = "results/mcmc/"*(use_continuation ? "cont_" : (use_fast_ode ? "fastODE_" : "fullODE_"))
+const file_type = "results/mcmc/"*(use_continuation ? "cont_" : (use_fast_ode ? "fastODE_" : "fullODE_"))
 verbose = 2
+const continue_from_previous = true
 # Define the method specific settings and functions for MCMC
 if use_continuation
     println("Using continuation")
@@ -401,6 +412,14 @@ else
     end
 end
 
+if continue_from_previous
+    start = JLD2.load_object(file_type*"saved_state.jld2") # Continue previous MCMC
+else
+    start = () # Start MCMC fresh
+    # Create new blank csv for chain to be filled into
+    CSV.write(file_type*"chain.csv", DataFrame([name => [] for name in ["Iteration", "gNa", "gK", "gL", "σ", "ℓ", "Accept"]]))
+end
+
 # Load the data
 data = CSV.read("results/mcmc/data.csv", DataFrame, header=false)
 t = data[:, 1]
@@ -409,17 +428,21 @@ const period = t[end]
 
 initialGuess = [0.9956494280601382, 0.9974120177992098, 0.9807640816954317, 1.5]
 # Run MCMC
-numSamples = 1000*length(initialGuess)*10 # 1000 samples per parameter before adaption (10% of the samples)
-mcmc(100, solver, initialGuess, prob, odedata, paramMap, verbose)
-@time chain, accepts, lls = mcmc(numSamples, solver, initialGuess, prob, odedata, paramMap, verbose)
+numSamples = 21 # 1000 samples per parameter before adaption (10% of the samples)
+mcmc(25, solver, initialGuess, prob, odedata, paramMap, start, verbose)
+println("Actual MCMC run starting now")
+println(now())
+#mcmc(numSamples, solver, initialGuess, prob, odedata, paramMap, start, verbose)
 
-# Write data to CSV
-paramNames = ["gNa" "gK" "gL" "σ"]
-tab = Tables.table([chain lls convert(Vector{Bool}, accepts)]; header=[paramNames..., "LogLikelihood","Accept"])
-CSV.write(file_type*"chain.csv", tab)
+# Read the chain data from the CSV file
+data = CSV.read(file_type*"chain.csv", DataFrame)
+accepts = data.Accept
+lls = data.ℓ
+chain = Matrix([data.gNa data.gK data.gL data.σ])
 
 # Plot results
 plot_params = (linewidth=2., dpi=300, size=(450,300), margin=5mm)
+paramNames = ["gNa" "gK" "gL" "σ"]
 
 # Plot acceptance rate
 plot([mean(accepts[max(i-499,1):i]) for i in 1:numSamples], title="Acceptance Rate", xlabel="Iteration",
@@ -452,7 +475,6 @@ order = [4, 3, 2, 1]
 plot(chain[:,order]./pTrueWithNoise[order]', label=paramNames[order'], title="Parameter Convergence", 
 xlabel="Iteration", ylabel="Parameter Value (Relative to Truth)", xlim=(1,numSamples), legend=:topright; 
 plot_params...)
-hline!([1.0], label="Truth", color=:black, linewidth=1.5)
 vline!([numSamples*0.25+0.5], label="Burn In", color=:red, linewidth=1.5, linestyle=:dot)
 vline!([numSamples*0.1+0.5], label="Adaption", color=:green, linewidth=1.5, linestyle=:dot)
 savefig(file_type*"convergence.pdf")

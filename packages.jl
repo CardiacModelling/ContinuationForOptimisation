@@ -17,5 +17,7 @@ Pkg.add([
     "Optim",
     "DataFrames",
     "Measures",
+    "JLD2",
+    "Dates",
     ]
 )
