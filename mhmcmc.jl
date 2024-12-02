@@ -385,7 +385,7 @@ const use_continuation = true
 const use_fast_ode = true
 const file_type = "results/mcmc/"*(use_continuation ? "cont_" : (use_fast_ode ? "fastODE_" : "fullODE_"))
 verbose = 2
-const continue_from_previous = true
+const continue_from_previous = false
 # Define the method specific settings and functions for MCMC
 if use_continuation
     println("Using continuation")
@@ -428,11 +428,11 @@ const period = t[end]
 
 initialGuess = [0.9956494280601382, 0.9974120177992098, 0.9807640816954317, 1.5]
 # Run MCMC
-numSamples = 21 # 1000 samples per parameter before adaption (10% of the samples)
-mcmc(25, solver, initialGuess, prob, odedata, paramMap, start, verbose)
+numSamples = 1000*length(initialGuess)*10 # 1000 samples per parameter before adaption (10% of the samples)
+mcmc(100, solver, initialGuess, prob, odedata, paramMap, start, verbose)
 println("Actual MCMC run starting now")
 println(now())
-#mcmc(numSamples, solver, initialGuess, prob, odedata, paramMap, start, verbose)
+mcmc(numSamples, solver, initialGuess, prob, odedata, paramMap, start, verbose)
 
 # Read the chain data from the CSV file
 data = CSV.read(file_type*"chain.csv", DataFrame)
