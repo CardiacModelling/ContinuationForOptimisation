@@ -5,7 +5,7 @@ include("./model.jl")
 using .Model
 
 # Check all variables are converged automatically
-function auto_converge_check(prob::ODEProblem, ic::Vector{Float64}, p::NamedTuple)::Bool
+function auto_converge_check(prob::ODEProblem, ic, p::NamedTuple)::Bool
     # Find the average across the first 10s for each state
     sol = solve(prob, Tsit5(), u0=ic, p=p, tspan=(0.0, 10.0), maxiters=1e9) # TODO I think this needs a save every 0.01s type of thing, same for end
     avgs = mean(sol.u)

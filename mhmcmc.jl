@@ -21,15 +21,15 @@ Converge to a limit cycle using the `solver` function and verify it using `check
 Returns `nothing` if the limit cycle was not found.
 
 # Arguments
-- `ic::Vector{Float64}`: The initial conditions to start from.
+- `ic`: The initial conditions to start from.
 - `solver::Function`: The function to solve the ODE.
 - `check::Function`: The function to check if the limit cycle has converged.
 - `verbose::Integer=1`: The verbosity level.
 
 # Returns
-- `lc::Vector{Float64}`: The converged limit cycle
+- `lc`: The converged limit cycle
 """
-function converge(ic::Vector{Float64}, solver::Function, check::Function, verbose::Integer=1)::Union{Vector{Float64}, Nothing}
+function converge(ic, solver::Function, check::Function, verbose::Integer=1)::Union{Vector{Float64}, Nothing}
     lc = copy(ic)
     for i in 1:5
         lc = solver(lc)
@@ -47,16 +47,16 @@ function converge(ic::Vector{Float64}, solver::Function, check::Function, verbos
 end
 
 """
-    mcmc(numSamples::Integer, solver::Function, μ₀::Vector{Float64}, prob::ODEProblem, data::Vector{Float64}, paramMap::Function, verbose::Integer=1)
+    mcmc(numSamples::Integer, solver::Function, μ₀, prob::ODEProblem, data, paramMap::Function, verbose::Integer=1)
 
 Run an adaptive Metropolis-Hastings MCMC to find the posterior distribution of the parameters.
 
 # Arguments
 - `numSamples::Integer`: The number of samples to take.
 - `solver::Function`: The function to compute the limit cycle.
-- `μ₀::Vector{Float64}`: The initial parameters to start from.
+- `μ₀`: The initial parameters to start from.
 - `prob::ODEProblem`: The ODEProblem for the model.
-- `data::Vector{Float64}`: The data to compare the limit cycle to.
+- `data`: The data to compare the limit cycle to.
 - `paramMap::Function`: The function to map the parameters from a `Vector` to a `NamedTuple`.
 - `verbose::Integer=1`: The verbosity level (0=None, 1=Minimal, 2=Standard, 3=Debug).
 
@@ -65,7 +65,7 @@ Run an adaptive Metropolis-Hastings MCMC to find the posterior distribution of t
 - `accepts::Vector{Float64}`: The acceptance rate of the proposals.
 - `lls::Vector{Float64}`: The log-likelihoods of the chain.
 """
-function mcmc(numSamples::Integer, solver::Function, μ₀::Vector{Float64}, prob::ODEProblem, data::Vector{Float64}, paramMap::Function, verbose::Integer=1)
+function mcmc(numSamples::Integer, solver::Function, μ₀, prob::ODEProblem, data, paramMap::Function, verbose::Integer=1)
     # Set up and preallocate variables
     chain = zeros(numSamples, length(μ₀))
     accepts = zeros(numSamples)
@@ -176,18 +176,18 @@ function mcmc(numSamples::Integer, solver::Function, μ₀::Vector{Float64}, pro
 end
 
 """
-    q(x::Vector{Float64}, Σ::Hermitian{Float64})::Vector{Float64}
+    q(x, Σ::Hermitian{Float64})
 
 Perturb state `x` to get a new state `xNew` and return it.
 
 # Arguments
-- `x::Vector{Float64}`: The current state.
+- `x`: The current state.
 - `Σ::Hermitian{Float64}`: The covariance matrix.
 
 # Returns
-- `xNew::Vector{Float64}`: The new state.
+- `xNew`: The new state.
 """
-function q(x::Vector{Float64}, Σ::Hermitian{Float64})::Vector{Float64}
+function q(x, Σ::Hermitian{Float64})
     local d
     try
         d = MvNormal(x, Σ)
@@ -209,7 +209,7 @@ function q(x::Vector{Float64}, Σ::Hermitian{Float64})::Vector{Float64}
 end
 
 """
-    π(x::Vector{Float64})::Number
+    π(x)::Number
 
 Calculate the prior log probability density function of `x`.
 
@@ -217,12 +217,12 @@ Uniform priors for conductance parameters - can ignore normalisation constant.
 Inverse Gamma prior for noise `σ`.
 
 # Arguments
-- `x::Vector{Float64}`: The conductance parameters (uniform prior so ignored), and the noise parameter σ (`InverseGamma(2,3)` distribution).
+- `x`: The conductance parameters (uniform prior so ignored), and the noise parameter σ (`InverseGamma(2,3)` distribution).
 
 # Returns
 - `π::Number`: The prior logpdf.
 """
-function π(x::Vector{Float64})::Number
+function π(x)::Number
     if any(x .< 0)
         return -Inf
     end
@@ -231,13 +231,13 @@ function π(x::Vector{Float64})::Number
 end
 
 """
-    ll(limitCycle::Vector{Float64}, data::Vector{Float64}, σ::Number, prob::ODEProblem, verbose = 1)::Number
+    ll(limitCycle, data, σ::Number, prob::ODEProblem, verbose = 1)::Number
 
 Calculate the log-likelihood of the limit cycle compared with the data, and σ.
 
 # Arguments
-- `limitCycle::Vector{Float64}`: A point on the limit cycle to compare with the data.
-- `data::Vector{Float64}`: The data to compare with the limit cycle.
+- `limitCycle`: A point on the limit cycle to compare with the data.
+- `data`: The data to compare with the limit cycle.
 - `σ::Number`: The estimated noise standard deviation.
 - `prob::ODEProblem`: The ODEProblem for the model.
 - `verbose::Integer=1`: The verbosity level.
@@ -245,7 +245,7 @@ Calculate the log-likelihood of the limit cycle compared with the data, and σ.
 # Returns
 - `ll::Number`: The log-likelihood.
 """
-function ll(limitCycle::Vector{Float64}, data::Vector{Float64}, σ::Number, prob::ODEProblem, verbose = 1)::Number
+function ll(limitCycle, data, σ::Number, prob::ODEProblem, verbose = 1)::Number
     if σ < 0
         return -Inf
     end
@@ -261,43 +261,43 @@ function ll(limitCycle::Vector{Float64}, data::Vector{Float64}, σ::Number, prob
 end
 
 """
-    odeSolverFull(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, xlc::Vector{Float64}, paramMap::Function, verbose::Integer)::Vector{Float64}
+    odeSolverFull(x, prob::ODEProblem, lc, xlc, paramMap::Function, verbose::Integer)
 
 Solve the ODE until convergence starting from the default initial conditions.
 
 # Arguments
-- `x::Vector{Float64}`: The parameters to find the limit cycle for.
+- `x`: The parameters to find the limit cycle for.
 - `prob::ODEProblem`: The ODEProblem to solve.
-- `::Vector{Float64}`: The previous limit cycle (unused).
-- `::Vector{Float64}`: The parameters of the previous limit cycle (unused).
+- `_`: The previous limit cycle (unused).
+- `_`: The parameters of the previous limit cycle (unused).
 - `paramMap::Function`: The function to map the parameters from a `Vector` to a `NamedTuple`.
 - `verbose=1::Integer`: The verbosity level.
 
 # Returns
-- `lc::Vector{Float64}`: The converged limit cycle.
+- `lc`: The converged limit cycle.
 """
-function odeSolverFull(x::Vector{Float64}, prob::ODEProblem, ::Vector{Float64}, ::Vector{Float64}, paramMap::Function, verbose=1::Integer)::Vector{Float64}
+function odeSolverFull(x, prob::ODEProblem, lc, xlc, paramMap::Function, verbose=1::Integer)
     tmp = DifferentialEquations.solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 1000.0), p=paramMap(x, x), save_start=false, maxiters=1e9)::ODESolution
     return tmp[end]
 end
 
 """
-    odeSolverCheap(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, xlc::Vector{Float64}, paramMap::Function, verbose::Integer)::Vector{Float64}
+    odeSolverCheap(x, prob::ODEProblem, lc, xlc, paramMap::Function, verbose::Integer)
 
 Solve the ODE until convergence but starting from the previous limit cycle.
 
 # Arguments
-- `x::Vector{Float64}`: The parameters to find the limit cycle for.
+- `x`: The parameters to find the limit cycle for.
 - `prob::ODEProblem`: The ODEProblem to solve.
-- `lc::Vector{Float64}`: The previous limit cycle.
-- `::Vector{Float64}`: The parameters of the previous limit cycle (unused).
+- `lc`: The previous limit cycle.
+- `_`: The parameters of the previous limit cycle (unused).
 - `paramMap::Function`: The function to map the parameters from a `Vector` to a `NamedTuple`.
 - `verbose=1::Integer`: The verbosity level.
 
 # Returns
-- `lc::Vector{Float64}`: The converged limit cycle.
+- `lc`: The converged limit cycle.
 """
-function odeSolverCheap(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, ::Vector{Float64}, paramMap::Function, verbose::Integer)::Vector{Float64}
+function odeSolverCheap(x, prob::ODEProblem, lc, _, paramMap::Function, verbose::Integer)
     tmp = DifferentialEquations.solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 150.0), p=paramMap(x, x), u0=lc, save_start=false, maxiters=1e9)::ODESolution
     return tmp[end]
 end
@@ -316,23 +316,23 @@ function early_abort((x, f, J, res, iteration, itlinear, options); kwargs...)
 end
 
 """
-    contSolver(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, xlc::Vector{Float64}, paramMap::Function, bp::BifurcationProblem, verbose::Integer)::Vector{Float64}
+    contSolver(x, prob::ODEProblem, lc, xlc, paramMap::Function, bp::BifurcationProblem, verbose::Integer)
 
 Perform continuation on the ODE to get the limit cycle.
 
 # Arguments
-- `x::Vector{Float64}`: The parameters to find the limit cycle for.
+- `x`: The parameters to find the limit cycle for.
 - `prob::ODEProblem`: The ODEProblem to solve during continuation.
-- `lc::Vector{Float64}`: The previous limit cycle.
-- `xlc::Vector{Float64}`: The parameters of the previous limit cycle.
+- `lc`: The previous limit cycle.
+- `xlc`: The parameters of the previous limit cycle.
 - `paramMap::Function`: The function to map the parameters from a `Vector` to a `NamedTuple`.
 - `bp::BifurcationProblem`: The BifurcationProblem to solve during continuation.
 - `verbose=1::Integer`: The verbosity level.
 
 # Returns
-- `lc::Vector{Float64}`: The converged limit cycle.
+- `lc`: The converged limit cycle.
 """
-function contSolver(x::Vector{Float64}, prob::ODEProblem, lc::Vector{Float64}, xlc::Vector{Float64}, paramMap::Function, bp::BifurcationProblem, verbose::Integer)::Vector{Float64}
+function contSolver(x, prob::ODEProblem, lc, xlc, paramMap::Function, bp::BifurcationProblem, verbose::Integer)
     # Remake BP and prob with the new parameters and limit cycle initial condition
     bp = re_make(bp; u0=lc, params=paramMap(x, xlc))::BifurcationProblem
     prob = remake(prob, u0=lc, p=paramMap(x, xlc))::ODEProblem
