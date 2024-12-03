@@ -62,7 +62,7 @@ Run an adaptive Metropolis-Hastings MCMC to find the posterior distribution of t
 - `record::Boolean`=true: Save the current state to a JLD2 file and append results to a CSV.
 - `verbose::Integer=1`: The verbosity level (0=None, 1=Minimal, 2=Standard, 3=Debug).
 """
-function mcmc(numSamples::Integer, solver::Function, μ₀, prob::ODEProblem, data, paramMap::Function, start::Tuple=(), record::Boolean=true, verbose::Integer=1)
+function mcmc(numSamples::Integer, solver::Function, μ₀, prob::ODEProblem, data, paramMap::Function, start::Tuple=(), record::Bool=true, verbose::Integer=1)
     # Set up and preallocate variables
     x = copy(μ₀)
     prob = remake(prob, p=paramMap(x, x), u0=Model.ic_conv)::ODEProblem
