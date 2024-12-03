@@ -103,7 +103,7 @@ function optimiseParameters()
         # Converge
         sol = DifferentialEquations.solve(prob, Tsit5(), save_everystep=false, save_start=false)
         sol_pulse = Tools.aligned_sol(sol[end], prob, period)
-        return sol_pulse.u
+        return sol_pulse
     end
 
     # Define the cost function
