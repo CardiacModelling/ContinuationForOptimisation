@@ -58,7 +58,7 @@ function saveData()
     end
 
     # Generate aligned data
-    period = floor(get_period(sol[end], prob)/0.01)*0.01
+    period = floor(get_period(sol[end], prob)/0.001)*0.001
     sol_pulse = Tools.aligned_sol(sol[end], prob, period)
     # Add noise and plot
     odedata = Array(sol_pulse.u) + 2.0 * randn(size(sol_pulse))
