@@ -68,9 +68,6 @@ function mcmc(numSamples::Integer, solver::Function, μ₀, prob::ODEProblem, da
     prob = remake(prob, p=paramMap(x, x), u0=Model.ic_conv)::ODEProblem
     adaptionStart = ceil(Int, numSamples*0.1) # Start adaptive covariance after 10% of samples
     if isempty(start)
-        chain = zeros(numSamples, length(μ₀))
-        accepts = zeros(numSamples)
-        lls = zeros(numSamples)
         σ = x[end]
         a = 1.0
         Σ = Hermitian(diagm(μ₀/1e6))
@@ -153,9 +150,6 @@ function mcmc(numSamples::Integer, solver::Function, μ₀, prob::ODEProblem, da
             end
             accept = 0
         end
-        if verbose > 0 && i > 100
-            println("Local acceptance rate: ", sum(accepts[i-99:i]), "%")
-        end
         # Adapt the proposal distribution
         if i == adaptionStart + 1 && verbose > 0
             println("Adaption started")
@@ -185,7 +179,6 @@ function mcmc(numSamples::Integer, solver::Function, μ₀, prob::ODEProblem, da
         end
         println(now())
     end
-    return chain, accepts, lls
 end
 
 """
@@ -429,7 +422,7 @@ t = data[:, 1]
 odedata = data[:, 2]
 const period = t[end]
 
-initialGuess = [0.9956494280601382, 0.9974120177992098, 0.9807640816954317, 1.5]
+initialGuess = [0.9944813719912906, 0.9966491528187934, 0.9757685706591276, 1.5]
 # Run MCMC
 numSamples = 1000*length(initialGuess)*10 # 1000 samples per parameter before adaption (10% of the samples)
 mcmc(100, solver, initialGuess, prob, odedata, paramMap, start, false, verbose)
