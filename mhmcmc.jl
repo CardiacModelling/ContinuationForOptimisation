@@ -73,7 +73,7 @@ function mcmc(numSamples::Integer, solver::Function, μ₀, prob::ODEProblem, da
         lls = zeros(numSamples)
         σ = x[end]
         a = 1.0
-        Σ = Hermitian(diagm(μ₀/10000))
+        Σ = Hermitian(diagm(μ₀/1e6))
         lc = converge(Model.ic_conv, (ic) -> solver(x, prob, ic, x, paramMap, verbose), (ic) -> Tools.auto_converge_check(prob, ic, paramMap(x, x)), verbose)
         if lc === nothing
             lc = Model.ic_conv
