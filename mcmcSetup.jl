@@ -121,6 +121,6 @@ end
 
 sol_pulse, odedata, period = saveData()
 
-optimiseParameters()
+res = optimiseParameters()
 
-solMLE = plotData(sol_pulse, odedata, [0.9956494280601382, 0.9974120177992098, 0.9807640816954317], period)
+solMLE = plotData(sol_pulse, odedata, res.minimizer, period)
