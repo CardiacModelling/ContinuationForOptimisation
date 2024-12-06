@@ -448,7 +448,8 @@ vline!([numSamples*0.1+0.5], label="Adaption", color=:green, linewidth=1.5, line
 savefig(file_type*"acceptance.pdf")
 
 # Plot log likelihood
-plot(lls, title="Log Likelihood", xlabel="Iteration", ylabel="Log Likelihood", xlim=(1,numSamples); plot_params...)
+plot(lls, title="Log Likelihood", xlabel="Iteration", ylabel="Log Likelihood", xlim=(1,numSamples),
+label="ℓ"; plot_params...)
 vline!([numSamples*0.25+0.5], label="Burn In", color=:red, linewidth=1.5, linestyle=:dot)
 vline!([numSamples*0.1+0.5], label="Adaption", color=:green, linewidth=1.5, linestyle=:dot)
 savefig(file_type*"loglikelihood.pdf")
