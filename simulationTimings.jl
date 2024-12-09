@@ -125,15 +125,19 @@ end
 println("Reached the end of the script. Just running benchmark now.")
 t = run(bg, seconds=20)
 
+l = @layout [a b]
+
 plot(t["Small"]["ODE"], st=:box, yaxis=:log10, dpi=300, size=(450,300), linewidth=0, markerstrokewidth=0, title="Small Perturbation")
 plot!(t["Small"]["Cont"], st=:box, yaxis=:log10, legend=:bottomleft, xaxis=nothing, linewidth=0, markerstrokewidth=0,
 ylabel="Time (s)", ylim=(0.05e9, 1e9), yformatter=x->x/1e9)
-yaxis!(minorgrid=true)
-savefig("results/simTimings/smallStep/smallTimings.pdf")
+plotA = yaxis!(minorgrid=true)
 plot(t["Large"]["ODE"], st=:box, yaxis=:log10, dpi=300, size=(450,300), title="Large Perturbation", linewidth=0, markerstrokewidth=0)
-plot!(t["Large"]["Cont"], st=:box, yaxis=:log10, legend=:topleft, xaxis=nothing, linewidth=0, markerstrokewidth=0,
-ylabel="Time (s)", ylim=(0.5e9,3.0e9), yformatter=x->x/1e9)
-yaxis!(minorgrid=true)
-savefig("results/simTimings/largeStep/largeTimings.pdf")
+plot!(t["Large"]["Cont"], st=:box, yaxis=:log10, legend=:bottomleft, xaxis=nothing, linewidth=0, markerstrokewidth=0,
+ylabel="Time (s)", yformatter=x->x/1e9)
+plotB = yaxis!(minorgrid=true)
+
+plot(plotA, plotB, layout=l, size=(1063,350), dpi=300, margin=5Plots.mm, left_margin=10Plots.mm)
+annotate!([(3, 0.1, text("A", 16, :black)), (3, 0.9, text("B", 16, :black))])
+savefig("results/simTimings/possibleProblems.pdf")
 
 BenchmarkTools.save("results/simTimings/data.json", t)
