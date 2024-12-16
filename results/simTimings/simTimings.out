@@ -1,0 +1,154 @@
+    Updating registry at `~/.julia/registries/General.toml`
+   Resolving package versions...
+  No Changes to `~/contInf/Project.toml`
+  No Changes to `~/contInf/Manifest.toml`
+GKS: cannot open display - headless operation mode active
+From Converged State: Full ODE    results/simTimings/smallStep/convergence/ode-full    true
+From Converged State: Full ODE    results/simTimings/largeStep/convergence/ode-full    true
+From Converged State: Full ODE 1000sec    results/simTimings/smallStep/convergence/ode-1000    true
+From Converged State: Full ODE 1000sec    results/simTimings/largeStep/convergence/ode-1000    true
+From Converged State: Short ODE    results/simTimings/smallStep/convergence/ode-short    true
+From Converged State: Short ODE    results/simTimings/largeStep/convergence/ode-short    true
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+────────────────── PALC ──────────────────
+
+━━━━━━━━━━━━━━━━━━  INITIAL GUESS   ━━━━━━━━━━━━━━━━━━
+┌─────────────────────────────────────────────────────┐
+│ Newton step         residual      linear iterations │
+├─────────────┬──────────────────────┬────────────────┤
+│       0     │       1.1364e-01     │        0       │
+│       1     │       2.0127e-03     │        1       │
+│       2     │       2.1477e-07     │        1       │
+│       3     │       5.4132e-10     │        1       │
+│       4     │       1.7882e-10     │        1       │
+│       5     │       7.0636e-11     │        1       │
+└─────────────┴──────────────────────┴────────────────┘
+
+──▶ convergence of initial guess = OK
+
+──▶ parameter = 0.0, initial step
+
+━━━━━━━━━━━━━━━━━━ INITIAL TANGENT  ━━━━━━━━━━━━━━━━━━
+┌─────────────────────────────────────────────────────┐
+│ Newton step         residual      linear iterations │
+├─────────────┬──────────────────────┬────────────────┤
+│       0     │       1.3956e-02     │        0       │
+│       1     │       3.6504e-05     │        1       │
+│       2     │       1.3886e-10     │        1       │
+│       3     │       9.2126e-12     │        1       │
+└─────────────┴──────────────────────┴────────────────┘
+
+──▶ convergence of the initial guess = OK
+
+──▶ parameter = 0.006666666666666667, initial step (bis)
+Predictor:  Secant
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Continuation step 0 
+Step size = 1.0000e+00
+Parameter step = 0.0000e+00 ⟶  1.0000e+00 [guess]
+
+┌─────────────────────────────────────────────────────┐
+│ Newton step         residual      linear iterations │
+├─────────────┬──────────────────────┬────────────────┤
+│       0     │       4.9171e-02     │        0       │
+│       1     │       5.5401e-02     │        1       │
+│       2     │       2.3098e-03     │        1       │
+│       3     │       4.2049e-06     │        1       │
+│       4     │       4.3770e-11     │        1       │
+└─────────────┴──────────────────────┴────────────────┘
+──▶ Step Converged in 4 Nonlinear Iteration(s)
+Parameter step = 1.0000e+00 ⟶  1.0000e+00
+Predictor:  Secant
+From Converged State: Shooting    results/simTimings/smallStep/convergence/cont-shooting    true
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+────────────────── PALC ──────────────────
+
+━━━━━━━━━━━━━━━━━━  INITIAL GUESS   ━━━━━━━━━━━━━━━━━━
+┌─────────────────────────────────────────────────────┐
+│ Newton step         residual      linear iterations │
+├─────────────┬──────────────────────┬────────────────┤
+│       0     │       1.1364e-01     │        0       │
+│       1     │       2.0127e-03     │        1       │
+│       2     │       2.1477e-07     │        1       │
+│       3     │       5.4132e-10     │        1       │
+│       4     │       1.7882e-10     │        1       │
+│       5     │       7.0636e-11     │        1       │
+└─────────────┴──────────────────────┴────────────────┘
+
+──▶ convergence of initial guess = OK
+
+──▶ parameter = 0.0, initial step
+
+━━━━━━━━━━━━━━━━━━ INITIAL TANGENT  ━━━━━━━━━━━━━━━━━━
+┌─────────────────────────────────────────────────────┐
+│ Newton step         residual      linear iterations │
+├─────────────┬──────────────────────┬────────────────┤
+│       0     │       2.7974e-02     │        0       │
+│       1     │       1.1338e-04     │        1       │
+│       2     │       2.0992e-10     │        1       │
+│       3     │       1.2513e-10     │        1       │
+│       4     │       9.1887e-11     │        1       │
+└─────────────┴──────────────────────┴────────────────┘
+
+──▶ convergence of the initial guess = OK
+
+──▶ parameter = 0.002, initial step (bis)
+Predictor:  Secant
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Continuation step 0 
+Step size = 3.0000e-01
+Parameter step = 0.0000e+00 ⟶  3.7931e-01 [guess]
+
+┌─────────────────────────────────────────────────────┐
+│ Newton step         residual      linear iterations │
+├─────────────┬──────────────────────┬────────────────┤
+│       0     │       1.2607e-01     │        0       │
+│       1     │       6.7759e-02     │        1       │
+│       2     │       3.1286e-04     │        1       │
+│       3     │       3.4149e-08     │        1       │
+│       4     │       9.5521e-13     │        1       │
+└─────────────┴──────────────────────┴────────────────┘
+──▶ Step Converged in 4 Nonlinear Iteration(s)
+Parameter step = 0.0000e+00 ⟶  3.8500e-01
+Predictor:  Secant
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Continuation step 1 
+Step size = 4.0584e-01
+Parameter step = 3.8500e-01 ⟶  9.0543e-01 [guess]
+
+┌─────────────────────────────────────────────────────┐
+│ Newton step         residual      linear iterations │
+├─────────────┬──────────────────────┬────────────────┤
+│       0     │       2.0052e+00     │        0       │
+│       1     │       2.7081e-01     │        1       │
+│       2     │       1.8023e-02     │        1       │
+│       3     │       1.0771e-05     │        1       │
+│       4     │       6.8990e-10     │        1       │
+│       5     │       8.5738e-12     │        1       │
+└─────────────┴──────────────────────┴────────────────┘
+──▶ Step Converged in 5 Nonlinear Iteration(s)
+Parameter step = 3.8500e-01 ⟶  9.5461e-01
+Predictor:  Secant
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Continuation step 2 
+Step size = 5.3571e-01
+Parameter step = 9.5461e-01 ⟶  1.0000e+00 [guess]
+
+┌─────────────────────────────────────────────────────┐
+│ Newton step         residual      linear iterations │
+├─────────────┬──────────────────────┬────────────────┤
+│       0     │       6.6907e+01     │        0       │
+│       1     │       2.2112e+01     │        1       │
+│       2     │       6.4122e+00     │        1       │
+│       3     │       3.1213e+00     │        1       │
+│       4     │       9.8238e-01     │        1       │
+│       5     │       1.2112e-01     │        1       │
+│       6     │       6.9939e-04     │        1       │
+│       7     │       1.0475e-06     │        1       │
+│       8     │       4.4234e-11     │        1       │
+└─────────────┴──────────────────────┴────────────────┘
+──▶ Step Converged in 8 Nonlinear Iteration(s)
+Parameter step = 1.0000e+00 ⟶  1.0000e+00
+Predictor:  Secant
+From Converged State: Shooting    results/simTimings/largeStep/convergence/cont-shooting    true
+Reached the end of the script. Just running benchmark now.
