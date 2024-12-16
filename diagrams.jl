@@ -64,8 +64,8 @@ plot!([p2, p2], [initialCondition, centery2-sqrt((p2-centerx2)/curve2)], label="
 # Initial Condition
 plotB = hline!([initialCondition], label="IC", color=:pink; plotParams...)
 
-plot(plotA, plotB, layout=l, size=(539,250), dpi=300, margin=5Plots.mm, left_margin=10Plots.mm)
-annotate!([(-0.1, 5, text("A", 12, :black)), (1.38, 5, text("B", 12, :black))])
+plot(plotA, plotB, layout=l, size=(539,250), dpi=300, margin=5Plots.mm, left_margin=10Plots.mm,
+title=["A" "B"], titlelocation=:left)
 savefig("results/diagrams/possibleProblems.pdf")
 
 # Convergence figure
