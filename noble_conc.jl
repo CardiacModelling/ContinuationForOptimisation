@@ -65,20 +65,9 @@ params = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, conv_rate=1.0)
 
 # initial condition
 z0 = [-87.0, 0.01, 0.8, 0.01, 30, 160]
-prob_de = ODEProblem(noble_conc!, z0, (0.,10000.15), params, reltol=1e-8, abstol=1e-10)
-sol = DifferentialEquations.solve(prob_de, Tsit5(), maxiters=1e9, save_everystep=false)
 
-# initial condition converged for all sf=1, 10000.15sec, conv_rate=1.0
-z0 = [-78.72748461267115, 
-0.05085091703315501, 
-0.8013829807650223, 
-0.5390711265273838, 
-36.95647041868735, 
-153.78708878263234]
-
-# perturb the parameters to tune the convergence rate
-params = @set params.g_Na_sf=1.1
-params = @set params.conv_rate=0.75
+# tune the convergence rate
+params = @set params.conv_rate=2.5
 
 # Want to converge in close to 100 seconds
 prob_de = ODEProblem(noble_conc!, z0, (0.,200.0), params, reltol=1e-8, abstol=1e-10)
@@ -88,8 +77,13 @@ println("Convergence check - 90 seconds: ", Tools.auto_converge_check(prob_de, s
 println("Convergence check - 110 seconds: ", Tools.auto_converge_check(prob_de, sol(110), params))
 
 plot(sol, idxs=1)
-display(title!("Voltage from converged state"))
+display(title!("Voltage to convergence"))
 plot(sol, idxs=5)
-display(title!("Intra-cellular sodium from converged state"))
+display(title!("Intra-cellular sodium to convergence"))
 plot(sol, idxs=6)
-display(title!("Intra-cellular potassium from converged state"))
+display(title!("Intra-cellular potassium to convergence"))
+
+sol = DifferentialEquations.solve(prob_de, Tsit5(), tspan=(0.0, 1000.0), maxiters=1e7, save_everystep=false, save_start=false)
+# Find nice point for defining the start of the limit cycle
+sol = DifferentialEquations.solve(prob_de, Tsit5(), u0=sol.u[end], tspan=(0.0, 1.0))
+display(sol(0.3))

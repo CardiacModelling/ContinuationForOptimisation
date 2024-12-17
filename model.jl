@@ -54,8 +54,8 @@ function ode!(dz, z, p, t=0)
 	dz[2] = alpha_m*(1-m)-beta_m*m
 	dz[3] = alpha_h*(1-h)-beta_h*h
 	dz[4] = alpha_n*(1-n)-beta_n*n
-	dz[5] = 0.5*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
-	dz[6] = 0.5*(-(i_K+i_Leak)/(1000*F) - (ki-ki_target)/20.0)
+	dz[5] = 2.5*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
+	dz[6] = 2.5*(-(i_K+i_Leak)/(1000*F) - (ki-ki_target)/20.0)
 
 	dz
 end
@@ -110,8 +110,8 @@ function ode_cont!(dz, z, p, t=0)
 	dz[2] = alpha_m*(1-m)-beta_m*m
 	dz[3] = alpha_h*(1-h)-beta_h*h
 	dz[4] = alpha_n*(1-n)-beta_n*n
-	dz[5] = 0.75*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
-	dz[6] = 0.75*(-(i_K+i_Leak)/(1000*F) - (ki-ki_target)/20.0)
+	dz[5] = 2.5*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
+	dz[6] = 2.5*(-(i_K+i_Leak)/(1000*F) - (ki-ki_target)/20.0)
 
 	dz
 end
@@ -124,12 +124,12 @@ params_cont = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, na_step=0.0, k_step=0.0, l_s
 ic = [-87.0, 0.01, 0.8, 0.01, 30, 160]
 
 # initial condition converged for all sf=1, >10000sec
-ic_conv = [-78.72748461267115, 
-0.05085091703315501, 
-0.8013829807650223, 
-0.5390711265273838, 
-36.95647041868735, 
-153.78708878263234]
+ic_conv = [-79.08979066519076
+0.049845290662513204
+0.8083925845419085
+0.550265317913508
+36.957229146330675
+153.78051645130222]
 
 plot_idx = 1
 
