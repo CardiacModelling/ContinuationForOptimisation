@@ -31,14 +31,9 @@ Returns `nothing` if the limit cycle was not found.
 """
 function converge(ic, solver::Function, check::Function, verbose::Integer=1)::Union{Vector{Float64}, Nothing}
     lc = copy(ic)
-    for i in 1:5
-        lc = solver(lc)
-        if check(lc)
-            if verbose > 1 && i > 1
-                println("Required ", i, " iterations to converge")
-            end
-            return lc
-        end
+    lc = solver(lc)
+    if check(lc)
+        return lc
     end
     if verbose > 0
         println("Failed to converge to the limit cycle")
@@ -267,7 +262,7 @@ function ll(limitCycle, data, σ::Number, prob::ODEProblem, verbose = 1)::Number
 end
 
 """
-    odeSolverFull(x, prob::ODEProblem, lc, xlc, paramMap::Function, verbose::Integer)
+    odeSolverStandard(x, prob::ODEProblem, lc, xlc, paramMap::Function, verbose::Integer)
 
 Solve the ODE until convergence starting from the default initial conditions.
 
@@ -282,13 +277,24 @@ Solve the ODE until convergence starting from the default initial conditions.
 # Returns
 - `lc`: The converged limit cycle.
 """
-function odeSolverFull(x, prob::ODEProblem, lc, xlc, paramMap::Function, verbose=1::Integer)
-    tmp = DifferentialEquations.solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 1000.0), p=paramMap(x, x), save_start=false, maxiters=1e9)::ODESolution
+function odeSolverStandard(x, prob::ODEProblem, lc, xlc, paramMap::Function, verbose=1::Integer)
+    condition(u, _, _) = u[1]
+	STATE::Vector{Float64} = zeros(size(Model.ic))
+	function affect!(integrator)
+		error = STATE .- integrator.u
+		if sum(abs.(error)) < 1e-6
+			terminate!(integrator)
+		end
+		STATE .= integrator.u
+	end
+	cb = ContinuousCallback(condition, affect!, nothing;
+	save_positions = (false, false))
+    tmp = DifferentialEquations.solve(prob, Tsit5(), save_everystep = false; p=paramMap(x, x), save_start=false, maxiters=1e9, callback=cb)::ODESolution
     return tmp[end]
 end
 
 """
-    odeSolverCheap(x, prob::ODEProblem, lc, xlc, paramMap::Function, verbose::Integer)
+    odeSolverTracking(x, prob::ODEProblem, lc, xlc, paramMap::Function, verbose::Integer)
 
 Solve the ODE until convergence but starting from the previous limit cycle.
 
@@ -303,8 +309,19 @@ Solve the ODE until convergence but starting from the previous limit cycle.
 # Returns
 - `lc`: The converged limit cycle.
 """
-function odeSolverCheap(x, prob::ODEProblem, lc, _, paramMap::Function, verbose::Integer)
-    tmp = DifferentialEquations.solve(prob, Tsit5(), save_everystep = false; tspan=(0.0, 150.0), p=paramMap(x, x), u0=lc, save_start=false, maxiters=1e9)::ODESolution
+function odeSolverTracking(x, prob::ODEProblem, lc, _, paramMap::Function, verbose::Integer)
+    condition(u, _, _) = u[1]
+	STATE::Vector{Float64} = zeros(size(Model.ic))
+	function affect!(integrator)
+		error = STATE .- integrator.u
+		if sum(abs.(error)) < 1e-6
+			terminate!(integrator)
+		end
+		STATE .= integrator.u
+	end
+	cb = ContinuousCallback(condition, affect!, nothing;
+	save_positions = (false, false))
+    tmp = DifferentialEquations.solve(prob, Tsit5(), save_everystep = false; p=paramMap(x, x), u0=lc, save_start=false, maxiters=1e9, callback=cb)::ODESolution
     return tmp[end]
 end
 
@@ -359,7 +376,7 @@ function contSolver(x, prob::ODEProblem, lc, xlc, paramMap::Function, bp::Bifurc
         if verbose > 0
             println("Continuation failed: ", e)
         end
-        return odeSolverCheap(x, prob, lc, xlc, paramMap, verbose)
+        return odeSolverTracking(x, prob, lc, xlc, paramMap, verbose)
     end
     # Check if the continuation was successful (the parameter step was 1), if not fall back to ODE solver
     if brpo_sh.sol[end].p == 1.0
@@ -372,14 +389,14 @@ function contSolver(x, prob::ODEProblem, lc, xlc, paramMap::Function, bp::Bifurc
             println("Last point: ", brpo_sh.sol[end].p)
             println("No cont point had parameters wanted. Falling back to ODE solver")
         end
-        return odeSolverCheap(x, prob, lc, xlc, paramMap, verbose)
+        return odeSolverTracking(x, prob, lc, xlc, paramMap, verbose)
     end
 end
 
 # Method selection and settings
 const use_continuation = true
-const use_fast_ode = true
-const file_type = "results/mcmc/"*(use_continuation ? "cont_" : (use_fast_ode ? "fastODE_" : "fullODE_"))
+const use_tracking_ode = true
+const file_type = "results/mcmc/"*(use_continuation ? "cont_" : (use_tracking_ode ? "trackingODE_" : "standardODE_"))
 verbose = 2
 const continue_from_previous = false
 # Define the method specific settings and functions for MCMC
@@ -387,7 +404,7 @@ if use_continuation
     println("Using continuation")
     paramMap(x,y) = Tools.param_map(x,y)
     const p = Model.params_cont
-    prob = ODEProblem(Model.ode_cont!, Model.ic_conv, (0.0, 1000.0), Model.params_cont, abstol=1e-10, reltol=1e-8, maxiters=1e7)
+    prob = ODEProblem(Model.ode_cont!, Model.ic_conv, (0.0, 10000.0), Model.params_cont, abstol=1e-10, reltol=1e-8, maxiters=1e7)
     # Set up continuation solver
     lens = @optic _.step
     const bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, Model.params_cont, lens)
@@ -398,13 +415,13 @@ else
     println("Using ODE solver")
     paramMap(x, _) = Tools.param_map(x)
     const p = Model.params
-    prob = ODEProblem(Model.ode!, Model.ic_conv, (0.0, 1000.0), Model.params, abstol=1e-10, reltol=1e-8, maxiters=1e7)
-    if use_fast_ode
-        println("Using fast ODE solver")
-        solver = odeSolverCheap
+    prob = ODEProblem(Model.ode!, Model.ic_conv, (0.0, 10000.0), Model.params, abstol=1e-10, reltol=1e-8, maxiters=1e7)
+    if use_tracking_ode
+        println("Using tracking ODE solver")
+        solver = odeSolverTracking
     else
-        println("Using full ODE solver")
-        solver = odeSolverFull
+        println("Using standard ODE solver")
+        solver = odeSolverStandard
     end
 end
 
