@@ -89,7 +89,7 @@ pLarge = @set pLarge.k_step = 0.2
 pLarge = @set pLarge.l_step = -0.2
 
 params = [pSmall, pLarge]
-ds = [1.0, 0.35]
+ds = [1.0, 0.3]
 for i in eachindex(params)
 	p = params[i]
 	bp = BifurcationProblem(Model.ode_cont!, Model.ic_conv, p, lens;
@@ -118,6 +118,6 @@ for i in eachindex(params)
 end
 
 println("Reached the end of the script. Just running benchmark now.")
-t = run(bg, seconds=20)
+t = run(bg, seconds=100)
 
 BenchmarkTools.save("results/simTimings/data.json", t)
