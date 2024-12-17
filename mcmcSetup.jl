@@ -25,18 +25,20 @@ Get the period of the limit cycle.
 - `period::Number`: The period of the limit cycle.
 """
 function get_period(lc::Vector{Float64}, prob::ODEProblem)::Number
-    # Long simulation
-    sol = DifferentialEquations.solve(prob, Tsit5(), tspan=(0.0, 100.0), u0=lc, maxiters=1e9)::ODESolution
-    # Get local maximums
-    maxs = []
-    for i in 2:length(sol.t)-1
-        if sol[1, i] > sol[1, i+1] && sol[1, i] > sol[1, i-1]
-            push!(maxs, i)
+    # Use callbacks to find state at start and end of a period (using upcrossings of V=0mV)
+    condition(u, _, _) = u[1]
+    NUM_TIMES_EFFECT_HIT::Int = 0
+    function affect!(integrator)
+        NUM_TIMES_EFFECT_HIT += 1 
+        if NUM_TIMES_EFFECT_HIT >= 2
+            terminate!(integrator)
         end
     end
-    # Get average period (time between maxs)
-    pulse_widths = [sol.t[maxs[i]]-sol.t[maxs[i-1]] for i in 2:length(maxs)]
-    period = mean(pulse_widths)
+    cb = ContinuousCallback(condition, affect!, nothing;
+    save_positions = (true, false))
+    sol = DifferentialEquations.solve(prob, Tsit5(), u0=lc, tspan=(0.0, 10.0), maxiters=1e9, 
+    save_everystep=false, save_start=false, save_end=false, callback=cb)
+    period = sol.t[end]-sol.t[1]
     return period
 end
 

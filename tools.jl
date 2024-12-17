@@ -6,16 +6,21 @@ using .Model
 
 # Check all variables are converged automatically
 function auto_converge_check(prob::ODEProblem, ic, p::NamedTuple)::Bool
-    # Find the average across the first 10s for each state
-    sol = solve(prob, Tsit5(), u0=ic, p=p, tspan=(0.0, 10.0), maxiters=1e9) # TODO I think this needs a save every 0.01s type of thing, same for end
-    avgs = mean(sol.u)
-    # Run for further 80s to try and converge closer
-    sol = solve(prob, Tsit5(), u0=sol[end], p=p, tspan=(0.0, 80.0), save_everystep=false, save_start=false, maxiters=1e9)
-    # Run for further 10s and get the range of each State
-    sol = solve(prob, Tsit5(), u0=sol[end], p=p, tspan=(0.0, 10.0), maxiters=1e9)
-    # If avgs is inside the range of the final 10s then it is converged
-    sol = stack(sol.u)
-    return all(minimum(sol, dims=2) .< avgs .< maximum(sol, dims=2))
+    # Use callbacks to find state at start and end of period (using upcrossings of V=0mV)
+    condition(u, _, _) = u[1]
+    NUM_TIMES_EFFECT_HIT::Int = 0
+    function affect!(integrator)
+        NUM_TIMES_EFFECT_HIT += 1 
+        if NUM_TIMES_EFFECT_HIT >= 2
+            terminate!(integrator)
+        end
+    end
+    cb = ContinuousCallback(condition, affect!, nothing;
+    save_positions = (true, false))
+    sol = solve(prob, Tsit5(), u0=ic, p=p, tspan=(0.0, 10.0), maxiters=1e9, 
+    save_everystep=false, save_start=false, save_end=false, callback=cb)
+    error = sol[end] - sol[1]
+    return sum(abs.(error))<1e-6
 end
 
 """
@@ -33,12 +38,15 @@ Align the limit cycle in the solution to start at the max of V and fixes the tim
 - `sol::ODESolution`: The aligned solution.
 """
 function aligned_sol(lc, prob::ODEProblem, period::Number; save_only_V::Bool = true)
-    # Simulation of length 2*period to find the max of V
-    sol = DifferentialEquations.solve(prob, Tsit5(); tspan=(0.0, period*2.0), u0=lc, save_idxs=Model.plot_idx, saveat=1e-5, dense=false, maxiters=1e9)::ODESolution
-    # Find the time where V is maximised
-    t = sol.t[argmax(sol.u)]
-    # Find the states at that time
-    sol = DifferentialEquations.solve(prob, Tsit5(); tspan = (0.0,t), u0=sol.prob.u0, save_everystep=false, save_start=false, maxiters=1e9)
+    # Use callbacks to find state at start of period (using upcrossings of V=0mV)
+    condition(u, _, _) = u[1]
+    function affect!(integrator)
+        terminate!(integrator)
+    end
+    cb = ContinuousCallback(condition, affect!, nothing;
+    save_positions = (true, false))
+    sol = solve(prob, Tsit5(), u0=lc, p=p, tspan=(0.0, 10.0), maxiters=1e9, 
+    save_everystep=false, save_start=false, save_end=false, callback=cb)
     # Get the aligned solution
     if save_only_V
         return DifferentialEquations.solve(prob, Tsit5(), saveat=0.001, save_idxs=Model.plot_idx, tspan=(0.0, period), u0=sol.u[end], maxiters=1e9)::ODESolution
