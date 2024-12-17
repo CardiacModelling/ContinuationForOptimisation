@@ -103,7 +103,18 @@ function optimiseParameters()
     function model_simulator(p)
         prob = remake(prob, p=Tools.param_map(p))::ODEProblem
         # Converge
-        sol = DifferentialEquations.solve(prob, Tsit5(), save_everystep=false, save_start=false)
+        condition(u, _, _) = u[1]
+        STATE::Vector{Float64} = zeros(size(Model.ic))
+        function affect!(integrator)
+            error = STATE .- integrator.u
+            if sum(abs.(error)) < 1e-6
+                terminate!(integrator)
+            end
+            STATE .= integrator.u
+        end
+        cb = ContinuousCallback(condition, affect!, nothing;
+        save_positions = (false, false))
+        sol = DifferentialEquations.solve(prob, Tsit5(), save_everystep=false, save_start=false, save_end=true, callback=cb)
         sol_pulse = Tools.aligned_sol(sol[end], prob, period)
         return sol_pulse
     end
