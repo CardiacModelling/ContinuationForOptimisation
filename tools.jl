@@ -45,7 +45,7 @@ function aligned_sol(lc, prob::ODEProblem, period::Number; save_only_V::Bool = t
     end
     cb = ContinuousCallback(condition, affect!, nothing;
     save_positions = (true, false))
-    sol = solve(prob, Tsit5(), u0=lc, p=p, tspan=(0.0, 10.0), maxiters=1e9, 
+    sol = solve(prob, Tsit5(), u0=lc, tspan=(0.0, 10.0), maxiters=1e9, 
     save_everystep=false, save_start=false, save_end=false, callback=cb)
     # Get the aligned solution
     if save_only_V
