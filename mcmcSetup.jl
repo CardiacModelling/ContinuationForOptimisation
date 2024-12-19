@@ -26,7 +26,7 @@ Get the period of the limit cycle.
 """
 function get_period(lc::Vector{Float64}, prob::ODEProblem)::Number
     # Use callbacks to find state at start and end of a period (using upcrossings of V=0mV)
-    condition(u, _, _) = u[1]
+    condition(u, _, _) = u[1]+20
     NUM_TIMES_EFFECT_HIT::Int = 0
     function affect!(integrator)
         NUM_TIMES_EFFECT_HIT += 1 
@@ -103,7 +103,7 @@ function optimiseParameters()
     function model_simulator(p)
         prob = remake(prob, p=Tools.param_map(p))::ODEProblem
         # Converge
-        condition(u, _, _) = u[1]
+        condition(u, _, _) = u[1]+20
         STATE::Vector{Float64} = zeros(size(Model.ic))
         function affect!(integrator)
             error = STATE .- integrator.u

@@ -278,7 +278,7 @@ Solve the ODE until convergence starting from the default initial conditions.
 - `lc`: The converged limit cycle.
 """
 function odeSolverStandard(x, prob::ODEProblem, lc, xlc, paramMap::Function, verbose=1::Integer)
-    condition(u, _, _) = u[1]
+    condition(u, _, _) = u[1]+20
 	STATE::Vector{Float64} = zeros(size(Model.ic))
 	function affect!(integrator)
 		error = STATE .- integrator.u
@@ -310,7 +310,7 @@ Solve the ODE until convergence but starting from the previous limit cycle.
 - `lc`: The converged limit cycle.
 """
 function odeSolverTracking(x, prob::ODEProblem, lc, _, paramMap::Function, verbose::Integer)
-    condition(u, _, _) = u[1]
+    condition(u, _, _) = u[1]+20
 	STATE::Vector{Float64} = zeros(size(Model.ic))
 	function affect!(integrator)
 		error = STATE .- integrator.u

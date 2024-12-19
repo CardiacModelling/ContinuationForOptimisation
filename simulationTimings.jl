@@ -31,7 +31,7 @@ prob = ODEProblem(Model.ode!, Model.ic, (0.0, 10000.0), tmp, abstol=1e-10, relto
 # ODE Convergence - Standard
 params = [pSmall, pLarge]
 for i in eachindex(params)
-	condition(u, _, _) = u[1]
+	condition(u, _, _) = u[1]+20
 	STATE::Vector{Float64} = zeros(size(Model.ic))
 	function affect!(integrator)
 		error = STATE .- integrator.u
@@ -52,7 +52,7 @@ end
 
 # ODE Convergence - Tracking
 for i in eachindex(params)
-	condition(u, _, _) = u[1]
+	condition(u, _, _) = u[1]+20
 	STATE::Vector{Float64} = zeros(size(Model.ic))
 	function affect!(integrator)
 		error = STATE .- integrator.u

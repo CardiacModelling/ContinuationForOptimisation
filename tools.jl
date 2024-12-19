@@ -7,7 +7,7 @@ using .Model
 # Check all variables are converged automatically
 function auto_converge_check(prob::ODEProblem, ic, p::NamedTuple)::Bool
     # Use callbacks to find state at start and end of period (using upcrossings of V=0mV)
-    condition(u, _, _) = u[1]
+    condition(u, _, _) = u[1]+20
     NUM_TIMES_EFFECT_HIT::Int = 0
     function affect!(integrator)
         NUM_TIMES_EFFECT_HIT += 1 
@@ -19,7 +19,14 @@ function auto_converge_check(prob::ODEProblem, ic, p::NamedTuple)::Bool
     save_positions = (true, false))
     sol = solve(prob, Tsit5(), u0=ic, p=p, tspan=(0.0, 10.0), maxiters=1e9, 
     save_everystep=false, save_start=false, save_end=false, callback=cb)
-    error = sol[end] - sol[1]
+    if length(sol) < 2
+        # Run simulation and report max and min voltage
+        sol = solve(prob, Tsit5(), u0=ic, p=p, tspan=(0.0, 10.0), maxiters=1e9)
+        println("Max V: ", maximum(sol[1,:]))
+        println("Min V: ", minimum(sol[1,:]))
+    else
+        error = sol[end] - sol[1]
+    end
     return sum(abs.(error))<1e-6
 end
 
@@ -39,7 +46,7 @@ Align the limit cycle in the solution to start at the max of V and fixes the tim
 """
 function aligned_sol(lc, prob::ODEProblem, period::Number; save_only_V::Bool = true)
     # Use callbacks to find state at start of period (using upcrossings of V=0mV)
-    condition(u, _, _) = u[1]
+    condition(u, _, _) = u[1]+20
     function affect!(integrator)
         terminate!(integrator)
     end
