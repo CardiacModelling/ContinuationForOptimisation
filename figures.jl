@@ -21,7 +21,7 @@ annotate!(-1, 1.75e9, text("B", 12, :black), subplot=2)
 savefig("results/simTimings/simTimings.pdf")
 
 # MCMC
-file_types = ["results/mcmc/cont_", "results/mcmc/trackingODE_", "results/mcmc/trackingODE_"] # Placeholder for full data
+file_types = ["results/mcmc/cont_", "results/mcmc/trackingODE_", "results/mcmc/standardODE_"]
 plots = []
 numSamples = 40000
 for file_type in file_types
