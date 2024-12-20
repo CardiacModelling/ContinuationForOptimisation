@@ -439,7 +439,7 @@ t = data[:, 1]
 odedata = data[:, 2]
 const period = t[end]
 
-initialGuess = [0.9944813719912906, 0.9966491528187934, 0.9757685706591276, 1.5]
+initialGuess = [0.9928352900005553, 0.9960647494348314, 0.9734045210983941, 1.5]
 # Run MCMC
 numSamples = 1000*length(initialGuess)*10 # 1000 samples per parameter before adaption (10% of the samples)
 mcmc(100, solver, initialGuess, prob, odedata, paramMap, start, false, verbose)
