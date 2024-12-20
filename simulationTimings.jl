@@ -46,7 +46,7 @@ for i in eachindex(params)
 	prob_de = remake(prob, p=p)
 	sol = DifferentialEquations.solve(prob_de, Tsit5(), maxiters=1e9, save_everystep=false, save_start=false, save_end=true, callback=cb)
 	display(sol.t)
-	b = @benchmarkable DifferentialEquations.solve($prob_de, $Tsit5(), maxiters=1e9, save_everystep=false, save_start=false, save_end=true, callback=cb)
+	b = @benchmarkable DifferentialEquations.solve($prob_de, $Tsit5(), maxiters=1e9, save_everystep=false, save_start=false, save_end=true, callback=$cb)
 	bg[i==1 ? "Small" : "Large"]["ODE"]["ODE - Standard"] = b
 end
 
@@ -67,7 +67,7 @@ for i in eachindex(params)
 	prob_de = remake(prob, p=p)
 	sol = DifferentialEquations.solve(prob_de, Tsit5(), maxiters=1e9, u0=Model.ic_conv, save_everystep=false, save_start=false, save_end=true, callback=cb)
 	display(sol.t)
-	b = @benchmarkable DifferentialEquations.solve($prob_de, $Tsit5(), maxiters=1e9, u0=Model.ic_conv, save_everystep=false, save_start=false, save_end=true, callback=cb)
+	b = @benchmarkable DifferentialEquations.solve($prob_de, $Tsit5(), maxiters=1e9, u0=Model.ic_conv, save_everystep=false, save_start=false, save_end=true, callback=$cb)
 	bg[i==1 ? "Small" : "Large"]["ODE"]["ODE - Tracking"] = b
 end
 
