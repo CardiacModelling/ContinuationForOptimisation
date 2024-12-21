@@ -69,5 +69,23 @@ plot(plotA, plotB, layout=l, size=(539,250), dpi=300, margin=5Plots.mm, left_mar
 title=["A" "B"], titlelocation=:left)
 savefig("results/diagrams/possibleProblems.pdf")
 
+ml = CellModel("ohara_rudy_cipa_v1_2017.cellml")
+ic = [7.8e-5, -88.0]
+prob = ODEProblem(ml.sys, [], (0,50000.0), [ml.sys.intracellular_ions₊ki=>140.0, ml.sys.intracellular_ions₊nai=>6, ml.sys.membrane₊v=>ic[2], ml.sys.intracellular_ions₊cai=>ic[1]], abstol=1e-10, reltol=1e-8)
+sol = solve(prob, Tsit5(), saveat=1.0, maxiters=1e9)
 
+plot(sol.t.-49000.0, sol[variable_index(ml.sys, ml.sys.membrane₊v),:], color=:black, legend=nothing; plotParams...)
+plot!(sol.t, sol[variable_index(ml.sys, ml.sys.membrane₊v),:], color=:hotpink; plotParams...)
+xlims!(0.0, 400.0)
+xlabel!("Time (ms)")
+plotA = ylabel!("Membrane Voltage (mV)")
 
+my_cgrad = cgrad([:hotpink, :black])
+plot(sol, idxs=(ml.sys.intracellular_ions₊cai,ml.sys.membrane₊v), legend=nothing; lc=my_cgrad, line_z=sol.t, plotParams...)
+xlabel!("Intracellular Ca²⁺ (μM)")
+xaxis!(xformatter=x->x*1e3)
+plotB = scatter!([ic[1]], [ic[2]], color=:hotpink; plotParams...)
+
+plot(plotA, plotB, layout=l, size=(539,250), dpi=300, bottom_margin=2Plots.mm,
+title=["A" "B"], titlelocation=:left, link=:y)
+savefig("results/diagrams/actionPotential.pdf")

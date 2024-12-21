@@ -19,5 +19,8 @@ Pkg.add([
     "Measures",
     "JLD2",
     "Dates",
+    "CellMLToolkit",
+    "ModelingToolkit",
+    "SymbolicIndexingInterface",
     ]
 )
