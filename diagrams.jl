@@ -13,7 +13,7 @@ upperLine(x) = @. exp(-6*x+3)+1
 x = 0:0.01:1
 y1 = lowerLine(x)
 y2 = upperLine(x)
-plot(x, lowerLine, color=:black, label="", left_margin=5Plots.mm, xlim=(0,1), ylim=ylims; plotParams...)
+plot(x, lowerLine, color=:black, label="", xlim=(0,1), ylim=ylims; plotParams...)
 plot!(x, upperLine, color=:black, label="", xlabel="Parameter", ylabel="State", xticks=([p1, p2], [L"p_1", L"p_2"]), yticks=nothing; plotParams...)
 
 # Continuation curve
@@ -41,15 +41,14 @@ xCurve1(y) = @. -curve1*(y-centery1)^2+centerx1
 xCurve2(y) = @. curve2*(y-centery2)^2+centerx2
 
 y = 0:0.01:centery1
-plot(xCurve1(y), y, xlim=(0,1), ylim=(0,1), linestyle=:dot, color=:black, label="", left_margin=5Plots.mm; plotParams...)
+plot(xCurve1(y), y, xlim=(0,1), ylim=(0,1), linestyle=:dot, color=:black, label=""; plotParams...)
 y = centery1:0.01:1
-plot(xCurve1(y), y, xlim=(0,1), ylim=(0,1), color=:black, label="", left_margin=5Plots.mm; plotParams...)
+plot(xCurve1(y), y, xlim=(0,1), ylim=(0,1), color=:black, label=""; plotParams...)
 y = 0:0.01:centery2
 plot!(xCurve2(y), y, color=:black, label="Stable LC"; plotParams...)
 y = centery2:0.01:1
 plot!(xCurve2(y), y, color=:black, label="Unstable LC", linestyle=:dot, xticks=([p1, p2], [L"p_1", L"p_2"]), yticks=nothing; plotParams...)
 xlabel!("Parameter")
-ylabel!("State")
 
 # Continuation curve
 criticalY = centery1+sqrt((centerx1-p1)/curve1)
@@ -65,7 +64,7 @@ plot!([p2, p2], [initialCondition, centery2-sqrt((p2-centerx2)/curve2)], label="
 # Initial Condition
 plotB = hline!([initialCondition], label="IC", color=:pink; plotParams...)
 
-plot(plotA, plotB, layout=l, size=(539,250), dpi=300, margin=5Plots.mm, left_margin=10Plots.mm,
+plot(plotA, plotB, layout=l, size=(539,250), dpi=300, left_margin=4Plots.mm, 
 title=["A" "B"], titlelocation=:left)
 savefig("results/diagrams/possibleProblems.pdf")
 
