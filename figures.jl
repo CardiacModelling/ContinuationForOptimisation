@@ -36,7 +36,7 @@ for file_type in file_types
 
     # Plot results
     plot_params = (linewidth=2., dpi=300)
-    paramNames = ["gNa" "gK" "gL" "σ"]
+    paramNames = ["p₁" "p₂" "p₃" "σ"]
 
     # Plot acceptance rate
     plot([mean(accepts[max(i-499,1):i]) for i in 1:numSamples], xlabel="Iteration",
@@ -56,11 +56,16 @@ for file_type in file_types
 
     # Plot parameter convergence
     pTrueWithNoise = [1.0, 1.0, 1.0, 2.0]
-    order = [4, 3, 1, 2] # TODO: Order needs fixing so all are visible
-    plot(chain[:,order]./pTrueWithNoise[order]', label=paramNames[order'], xticks=([0,20000,40000],["0","2×10⁵","4×10⁵"]),
+    order = [4, 3, 1, 2]
+    plot(chain[:,order]./pTrueWithNoise[order]', label="", xticks=([0,20000,40000],["0","2×10⁵","4×10⁵"]),
     xlabel="Iteration", xlim=(0,numSamples); 
     plot_params...)
+    # Hodge podge of lines in the right order for the legend
+    for i in 1:4
+        plot!([-1], [-1], label=paramNames[i], color=findfirst(i.==order); plot_params...)
+    end
     vline!([numSamples*0.25+0.5], label="Burn In", color=:red, linewidth=1.5, linestyle=:dot)
+    ylims!(0.7,1.2)
     plots = [plots... vline!([numSamples*0.1+0.5], label="Adaption", color=:green, linewidth=1.5, linestyle=:dot, legend=nothing)]
 
     # Plot posterior histograms
