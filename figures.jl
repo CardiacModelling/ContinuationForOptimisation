@@ -64,11 +64,9 @@ for file_type in file_types
     plots = [plots... vline!([numSamples*0.1+0.5], label="Adaption", color=:green, linewidth=1.5, linestyle=:dot, legend=nothing)]
 
     # Plot posterior histograms
-    for i in axes(posterior, 2)
-        histogram(posterior[:, i], normalize=:pdf, bins=35, linecolor=:match,
-        legend = false; plot_params...)
-        plots = [plots... vline!([pTrueWithNoise[i]], color=:black, linewidth=1.5)]
-    end
+    p = corrplot(posterior, label=paramNames, size=(539,500), xrot=90)
+    plot!(p, subplot=16, xformatter=x->x)
+    savefig(file_type*"posterior.pdf")
 end
 
 l = @layout [a b c]
@@ -79,32 +77,10 @@ function plotter(plots, title)
     return plot!(legend=:bottomright, subplot=3)
 end
 
-plot_ = plotter(plots[1:7:end], "Acceptance Rate")
+plot_ = plotter(plots[1:3:end], "Acceptance Rate")
 plot!(legend=:topright, subplot=3)
 savefig("results/mcmc/acceptanceRate.pdf")
-plot_ = plotter(plots[2:7:end], "Log Likelihood")
+plot_ = plotter(plots[2:3:end], "Log Likelihood")
 savefig("results/mcmc/logLikelihood.pdf")
-plot_ = plotter(plots[3:7:end], "Normalized Parameters")
+plot_ = plotter(plots[3:3:end], "Normalized Parameters")
 savefig("results/mcmc/convergence.pdf")
-
-function posterior_plotter(plots, xlims)
-    plot(plots..., layout=l, size=(539,250), dpi=300, link=:all, yformatter=:none, title=["A" "B" "C"], titlelocation=:left, bottom_margin=2Plots.mm, right_margin=2Plots.mm)
-    yaxis!(yformatter=x->x, ylabel="Density", subplot=1)
-    return xlims!(xlims...)
-end
-
-plot_ = posterior_plotter(plots[4:7:end], (0.98, 1.01))
-xlabel!("gNa")
-savefig("results/mcmc/posterior_gNa.pdf")
-plot_ = posterior_plotter(plots[5:7:end], (0.985, 1.01))
-xlabel!("gK")
-xticks!([0.99, 1.0, 1.01], ["0.99", "1", "1.01"])
-savefig("results/mcmc/posterior_gK.pdf")
-plot_ = posterior_plotter(plots[6:7:end], (0.9, 1.05))
-xlabel!("gL")
-xticks!([0.9, 0.95, 1.0, 1.05], ["0.9", "0.95", "1", "1.05"])
-savefig("results/mcmc/posterior_gL.pdf")
-plot_ = posterior_plotter(plots[7:7:end], (1.8, 2.4))
-xlabel!("σ")
-xticks!([1.8, 2.0, 2.2, 2.4], ["1.8", "2", "2.2", "2.4"])
-savefig("results/mcmc/posterior_σ.pdf")
