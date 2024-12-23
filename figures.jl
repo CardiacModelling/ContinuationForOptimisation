@@ -6,13 +6,15 @@ using CSV, DataFrames
 t = BenchmarkTools.load("results/simTimings/data.json")[1]
 l = @layout [a b]
 
-plot(t["Small"]["ODE"], st=:box, yaxis=:log10, dpi=300, size=(450,300), linewidth=0, markerstrokewidth=0, title="Small Perturbation")
-plot!(t["Small"]["Cont"], st=:box, yaxis=:log10, legend=:bottomleft, xaxis=nothing, linewidth=0, markerstrokewidth=0,
-ylabel="Time (s)", yformatter=x->x/1e9, ylim=(0.05e9, 1e9))
+plot(t["Small"]["ODE"], st=:box, yaxis=:log10, dpi=300, size=(450,300), linecolor=:match, 
+markerstrokewidth=0, title="Small Perturbation", whisker_range=0)
+plot!(t["Small"]["Cont"], st=:box, yaxis=:log10, legend=:bottomleft, xaxis=nothing, linecolor=:match,
+markerstrokewidth=0, ylabel="Time (s)", yformatter=x->x/1e9, ylim=(0.05e9, 1e9), whisker_range=0)
 plotA = yaxis!(minorgrid=true)
-plot(t["Large"]["ODE"], st=:box, yaxis=:log10, dpi=300, size=(450,300), title="Large Perturbation", linewidth=0, markerstrokewidth=0)
-plot!(t["Large"]["Cont"], st=:box, yaxis=:log10, legend=nothing, xaxis=nothing, linewidth=0, markerstrokewidth=0,
-ylabel="", yformatter=x->x/1e9, ylim=(0.05e9, 1e9))
+plot(t["Large"]["ODE"], st=:box, yaxis=:log10, dpi=300, size=(450,300), title="Large Perturbation", 
+linecolor=:match, markerstrokewidth=0, whisker_range=0)
+plot!(t["Large"]["Cont"], st=:box, yaxis=:log10, legend=nothing, xaxis=nothing, linecolor=:match, markerstrokewidth=0,
+ylabel="", yformatter=x->x/1e9, ylim=(0.05e9, 1e9), whisker_range=0)
 plotB = yaxis!(minorgrid=true)
 
 plot(plotA, plotB, layout=l, size=(539,200), dpi=300, margin=5Plots.mm, link=:y)
