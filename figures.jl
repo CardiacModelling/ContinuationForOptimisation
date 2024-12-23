@@ -64,7 +64,7 @@ for file_type in file_types
     plots = [plots... vline!([numSamples*0.1+0.5], label="Adaption", color=:green, linewidth=1.5, linestyle=:dot, legend=nothing)]
 
     # Plot posterior histograms
-    p = corrplot(posterior, label=paramNames, size=(539,500), xrot=90)
+    p = corrplot(posterior, label=paramNames, size=(539,500), xrot=90, fillcolor=:thermal)
     plot!(p, subplot=16, xformatter=x->x)
     savefig(file_type*"posterior.pdf")
 end
