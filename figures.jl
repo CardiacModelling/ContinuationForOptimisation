@@ -36,7 +36,7 @@ for file_type in file_types
 
     # Plot results
     plot_params = (linewidth=2., dpi=300)
-    paramNames = ["p₁" "p₂" "p₃" "σ"]
+    paramNames = ["θ₁" "θ₂" "θ₃" "σ"]
 
     # Plot acceptance rate
     plot([mean(accepts[max(i-499,1):i]) for i in 1:numSamples], xlabel="Iteration",
