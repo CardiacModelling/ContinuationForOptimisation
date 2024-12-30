@@ -59,7 +59,7 @@ y = centery1:-0.01:0
 plot!(xCurve1(y), y, color=:blue, linestyle=:dot, label=""; plotParams...)
 
 # ODE curve
-plot!([p2, p2], [initialCondition, centery2-sqrt((p2-centerx2)/curve2)], label="Full", color=:red, legend=:bottomright; plotParams...)
+plot!([p2, p2], [initialCondition, centery2-sqrt((p2-centerx2)/curve2)], label="Standard", color=:red, legend=:bottomright; plotParams...)
 
 # Initial Condition
 plotB = hline!([initialCondition], label="IC", color=:pink; plotParams...)
