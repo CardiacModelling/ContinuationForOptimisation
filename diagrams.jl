@@ -10,10 +10,13 @@ p2 = 0.85
 ylims = (0, 5)
 lowerLine(x) = @. exp(-5*x+0.75)+0.5
 upperLine(x) = @. exp(-6*x+3)+1
+midLine(x) = @. exp(-5.5*x+2)+0.75
 x = 0:0.01:1
 y1 = lowerLine(x)
 y2 = upperLine(x)
+y3 = midLine(x)
 plot(x, lowerLine, color=:black, label="", xlim=(0,1), ylim=ylims; plotParams...)
+plot!(x, midLine, color=:black, label="", linestyle=:dot; plotParams...)
 plot!(x, upperLine, color=:black, label="", xlabel="Parameter", ylabel="State", xticks=([p1, p2], [L"p_1", L"p_2"]), yticks=nothing; plotParams...)
 
 # Continuation curve
