@@ -71,6 +71,17 @@ for file_type in file_types
     # Plot posterior histograms
     p = corrplot(posterior, label=paramNames, size=(539,500), xrot=90, fillcolor=:thermal)
     plot!(p, subplot=16, xformatter=x->x)
+    for i in 1:4
+        for j in 1:4
+            if i != j
+                scatter!(p, [pTrueWithNoise[i]], [pTrueWithNoise[j]], subplot=(j-1)*4+i, label="", color=:red, marker=:x)
+            end
+            if i == j
+                vline!(p, [pTrueWithNoise[i]], subplot=(j-1)*4+i, label="", color=:red)
+            end
+        end
+    end
+
     savefig(file_type*"posterior.pdf")
 end
 
