@@ -19,15 +19,33 @@ plot(x, lowerLine, color=:black, label="", xlim=(0,1), ylim=ylims; plotParams...
 plot!(x, midLine, color=:black, label="", linestyle=:dot; plotParams...)
 plot!(x, upperLine, color=:black, label="", xlabel="Parameter", ylabel="State", xticks=([p1, p2], [L"p_1", L"p_2"]), yticks=nothing; plotParams...)
 
+function arrows(x; start=5)
+    # Add NaNs into the vector x for where the arrows should be
+    newx = convert(Vector, copy(x))
+    for i in length(x)-start:-10:5
+        insert!(newx, i, NaN)
+        insert!(newx, i, x[i])
+    end
+    return newx
+end
+
 # Continuation curve
-plot!([p1, p1], [lowerLine(p1), initialCondition], label="", color=:blue; plotParams...)
-plot!(p1:0.01:p2, lowerLine, color=:blue, label="Continuation"; plotParams...)
+pointsOnStraight = 12
+pointsOnCurve = 100
+x1 = arrows(repeat([p1], pointsOnStraight))
+y1 = arrows(LinRange(initialCondition, lowerLine(p1), pointsOnStraight))
+x2 = arrows(LinRange(p1, p2, pointsOnCurve); start=10)
+y2 = lowerLine(x2)
+plot!(vcat(x1, x2), vcat(y1, y2), label="", color=:blue, arrow=true; plotParams...)
 
 # ODE curve
-plot!([p2, p2], [upperLine(p2), initialCondition], label="", color=:red; plotParams...)
+pointsOnStraight = 12
+x = arrows(repeat([p2], pointsOnStraight))
+y = arrows(LinRange(initialCondition, upperLine(p2), pointsOnStraight))
+plot!(x, y, label="", color=:red, arrow=true; plotParams...)
 
 # Initial condition
-plotA = hline!([initialCondition], label="IC", color=:pink, legend=false; plotParams...)
+plotA = hline!([initialCondition], label="", color=:pink, legend=false; plotParams...)
 
 # Panel B
 initialCondition = 0.53
@@ -55,14 +73,21 @@ xlabel!("Parameter")
 
 # Continuation curve
 criticalY = centery1+sqrt((centerx1-p1)/curve1)
-plot!([p1, p1], [initialCondition, criticalY], label="", color=:blue; plotParams...)
-y = criticalY:-0.01:centery1
-plot!(xCurve1(y), y, color=:blue, label="Continuation"; plotParams...)
-y = centery1:-0.01:0
-plot!(xCurve1(y), y, color=:blue, linestyle=:dot, label=""; plotParams...)
+pointsOnStraight = 12
+pointsOnCurve = 45
+x1 = arrows(repeat([p1], pointsOnStraight))
+y1 = arrows(LinRange(initialCondition, criticalY, pointsOnStraight))
+y2 = arrows(LinRange(criticalY, centery1-sqrt(centerx1/curve1), pointsOnCurve); start=7)
+x2 = xCurve1(y2)
+x = vcat(x1, x2)
+y = vcat(y1, y2)
+plot!(x, y, label="Continuation", color=:blue, arrow=true; plotParams...)
 
 # ODE curve
-plot!([p2, p2], [initialCondition, centery2-sqrt((p2-centerx2)/curve2)], label="Standard", color=:red, legend=:bottomright; plotParams...)
+pointsOnStraight = 12
+x = arrows(repeat([p2], pointsOnStraight))
+y = arrows(LinRange(initialCondition, centery2-sqrt((p2-centerx2)/curve2), pointsOnStraight))
+plot!(x, y, label="Standard", color=:red, arrow=true, legend=:bottomright; plotParams...)
 
 # Initial Condition
 plotB = hline!([initialCondition], label="IC", color=:pink; plotParams...)
