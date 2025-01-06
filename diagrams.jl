@@ -1,6 +1,12 @@
 using Plots, LaTeXStrings, Distributions
 using CellMLToolkit, DifferentialEquations, ModelingToolkit, SymbolicIndexingInterface
 
+include("./tools.jl")
+using .Tools
+
+include("./model.jl")
+using .Model
+
 plotParams = (linewidth=2., dpi=300)
 l = @layout [a b]
 # Panel A
@@ -116,3 +122,39 @@ plotB = scatter!([ic[1]], [ic[2]], color=:hotpink; plotParams...)
 plot(plotA, plotB, layout=l, size=(539,250), dpi=300, bottom_margin=2Plots.mm,
 title=["A" "B"], titlelocation=:left, link=:y)
 savefig("results/diagrams/actionPotential.pdf")
+
+# Limit cycles
+plotTime = 1.0
+# Start - Tracking
+params = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, conv_rate=2.5)
+prob_de = ODEProblem(Model.ode!, Model.ic, (0.,1000.0), params, reltol=1e-8, abstol=1e-10)
+sol = DifferentialEquations.solve(prob_de, Tsit5(), maxiters=1e7, saveat=10.0)
+sol = Tools.aligned_sol(sol[end], prob_de, plotTime)
+plot(sol, label="Start - Tracking", idxs=(1); plotParams...)
+
+# Start - Standard
+params = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, conv_rate=2.5)
+prob_de = ODEProblem(Model.ode!, Model.ic, (0.,1000.0), params, reltol=1e-8, abstol=1e-10)
+sol = Tools.aligned_sol(z0, prob_de, plotTime)
+plot!(sol, label="Start - Standard", idxs=(1); plotParams...)
+
+# End - Small perturbation
+params = (g_Na_sf=1.1, g_K_sf=1.0, g_L_sf=1.0, conv_rate=2.5)
+prob_de = ODEProblem(Model.ode!, Model.ic, (0.,1000.0), params, reltol=1e-8, abstol=1e-10)
+sol = DifferentialEquations.solve(prob_de, Tsit5(), maxiters=1e7, saveat=10.0)
+sol = Tools.aligned_sol(sol[end], prob_de, plotTime)
+plot!(sol, label="End - Small Perturbation", idxs=(1); plotParams...)
+
+# End - Large perturbation
+params = (g_Na_sf=1.5, g_K_sf=1.2, g_L_sf=0.8, conv_rate=2.5)
+prob_de = ODEProblem(Model.ode!, Model.ic, (0.,1000.0), params, reltol=1e-8, abstol=1e-10)
+sol = DifferentialEquations.solve(prob_de, Tsit5(), maxiters=1e7, saveat=10.0)
+sol = Tools.aligned_sol(sol[end], prob_de, plotTime)
+plot!(sol, label="End - Large Perturbation", idxs=(1), legend=:outerbottom, legend_columns=2; plotParams...)
+
+xaxis!(xformatter = x -> x*1000)
+xlabel!("Time (ms)")
+ylabel!("Voltage (mV)")
+title!("Variation in APs")
+plot!(size=(539,300), dpi=300, rightmargin=2Plots.mm, bottommargin=-8Plots.mm)
+savefig("results/diagrams/limitCycles.pdf")
