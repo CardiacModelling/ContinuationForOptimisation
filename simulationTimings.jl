@@ -30,6 +30,7 @@ prob = ODEProblem(Model.ode!, Model.ic, (0.0, 10000.0), tmp, abstol=1e-10, relto
 
 # ODE Convergence - Standard
 params = [pSmall, pLarge]
+println("Standard Approach")
 for i in eachindex(params)
 	condition(u, _, _) = u[1]+20
 	STATE::Vector{Float64} = zeros(size(Model.ic))
@@ -45,12 +46,18 @@ for i in eachindex(params)
 	p = params[i]
 	prob_de = remake(prob, p=p)
 	sol = DifferentialEquations.solve(prob_de, Tsit5(), maxiters=1e9, save_everystep=false, save_start=false, save_end=true, callback=cb)
+	if i==1
+		println("Simulation time to convergence for small perturbation")
+	else
+		println("Simulation time to convergence for large perturbation")
+	end
 	display(sol.t)
 	b = @benchmarkable DifferentialEquations.solve($prob_de, $Tsit5(), maxiters=1e9, save_everystep=false, save_start=false, save_end=true, callback=$cb)
 	bg[i==1 ? "Small" : "Large"]["ODE"]["ODE - Standard"] = b
 end
 
 # ODE Convergence - Tracking
+println("Tracking Approach")
 for i in eachindex(params)
 	condition(u, _, _) = u[1]+20
 	STATE::Vector{Float64} = zeros(size(Model.ic))
@@ -66,6 +73,11 @@ for i in eachindex(params)
 	p = params[i]
 	prob_de = remake(prob, p=p)
 	sol = DifferentialEquations.solve(prob_de, Tsit5(), maxiters=1e9, u0=Model.ic_conv, save_everystep=false, save_start=false, save_end=true, callback=cb)
+	if i==1
+		println("Simulation time to convergence for small perturbation")
+	else
+		println("Simulation time to convergence for large perturbation")
+	end
 	display(sol.t)
 	b = @benchmarkable DifferentialEquations.solve($prob_de, $Tsit5(), maxiters=1e9, u0=Model.ic_conv, save_everystep=false, save_start=false, save_end=true, callback=$cb)
 	bg[i==1 ? "Small" : "Large"]["ODE"]["ODE - Tracking"] = b
