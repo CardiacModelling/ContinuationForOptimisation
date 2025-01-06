@@ -23,4 +23,4 @@ If `use_continuation=true`, then the continuation converger will be used.
 Otherwise, the ODE solver will be used to converge, running from a previous limit cycle if `use_tracking_ODE=true` or from standard initial conditions otherwise.
 
 # Reproducing the figures from the pre-generated data
-The figures can be regenerated using *figures.jl* (for results figures) and *diagrams.jl* for the phase plane diagrams.
+The figures can be regenerated using *figures.jl* (for results figures) and *diagrams.jl* (for non-results figures such as the phase plane diagrams).
