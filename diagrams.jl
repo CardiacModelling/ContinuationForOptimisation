@@ -135,7 +135,7 @@ plot(sol, label="Start - Tracking", idxs=(1); plotParams...)
 # Start - Standard
 params = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, conv_rate=2.5)
 prob_de = ODEProblem(Model.ode!, Model.ic, (0.,1000.0), params, reltol=1e-8, abstol=1e-10)
-sol = Tools.aligned_sol(z0, prob_de, plotTime)
+sol = Tools.aligned_sol(Model.ic, prob_de, plotTime)
 plot!(sol, label="Start - Standard", idxs=(1); plotParams...)
 
 # End - Small perturbation
