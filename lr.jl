@@ -1,6 +1,11 @@
+module LR
+
+export ode!, params, ic, ic_conv, plot_idx, slow_idx, isoutofdomain, tstops, param_map
+
 using DifferentialEquations
 using Parameters, Plots
 using LinearAlgebra, NaNMath
+using Accessors
 
 function pow(a, b)
     return abs(a)^b
@@ -14,7 +19,7 @@ function ln(a)
     return NaNMath.log(a)
 end
 
-function LR!(du, u, p, t=0.0)
+function ode!(du, u, p, t=0.0)
     @unpack Am, V_myo, V_JSR, V_NSR, R, T, F, Cm, g_Na, g_Nab, g_Cab, g_K1_max, g_Kp, g_K_max, Nao, Cao, Ko, gamma_Nai, gamma_Nao, gamma_Ki, gamma_Ko, P_Ca,
     P_Na, P_K, gamma_Cai, gamma_Cao, Km_Ca, PR_NaK, K_mpCa, I_pCa, I_NaK, K_mNai, K_mKo, P_ns_Ca, K_m_ns_Ca, K_NaCa, K_mNa, K_mCa, K_sat, eta, G_rel_max,
     tau_on, tau_off, tau_tr, K_mrel, K_mup, I_up, Ca_NSR_max, delta_Ca_ith, delta_Ca_i2, t_CICR = p
@@ -149,9 +154,9 @@ Cai = 0.12e-3
 Ca_JSR = 1.8
 Ca_NSR = 1.8
 Ki = 145.0
-u0 = [m, h, j, d, f, X, V, Nai, Cai, Ca_JSR, Ca_NSR, Ki]
+ic = [m, h, j, d, f, X, V, Nai, Cai, Ca_JSR, Ca_NSR, Ki]
 
-paramLR = (
+params = (
     # Cell geometry
     Am=200, V_myo=0.68, V_JSR=0.0048, V_NSR=0.0552,
     # Physical constants
@@ -175,6 +180,7 @@ function tstops(maxt)
     tstop = []
     while t < maxt
         push!(tstop, t + pulse_width / 2)
+        push!(tstop, t + pulse_width * 3 / 2)
         t += pulse_period
     end
     return tstop
@@ -189,43 +195,105 @@ function I_st(t)
     end
 end
 
-function convergence_plot(sol, dt=1000)
-    # Plot the change in the states across each pulse
-    error = []
-    for i in dt:dt:sol.t[end]
-        push!(error, norm((sol(i) - sol(i - dt)) ./ scaling))
-    end
-    # Plot error on a log scale
-    plot(1:length(error), error, yscale=:log10)
-    title!("Convergence plot")
-    xlabel!("Pulse count")
-    println(error)
-    display(ylabel!("Error"))
-end
-
 # The following initial conditions have been run to convergence at abstol=1e-13, reltol=1e-11
-# u0 = [0.0018898062554417226
-#     0.9802447503382736
-#     0.9876401575874676
-#     7.31687558525049e-6
-#     0.9972346826295406
-#     0.0025193256116648756
-#     -83.78994249513194
-#     25.430317134992308
-#     0.0006556590517487814
-#     6.526242185630225
-#     6.524882007576133
-#     136.09843018354334]
+ic_conv = [0.0018898062554417226
+    0.9802447503382736
+    0.9876401575874676
+    7.31687558525049e-6
+    0.9972346826295406
+    0.0025193256116648756
+    -83.78994249513194
+    25.430317134992308
+    0.0006556590517487814
+    6.526242185630225
+    6.524882007576133
+    136.09843018354334]
 
-maxt = 100000.0
 pulse_width = 0.5
 pulse_period = 500.0
 pulse_amplitude = 1.0
 
-scaling = copy(u0)
-scaling[1:6] .= 1.0
 id_V = 7
 
-prob_ode = ODEProblem(LR!, u0, (0.0, maxt), paramLR, abstol=1e-12, reltol=1e-10)
-sol_ode = solve(prob_ode, Rodas5(), tstops=tstops(maxt), maxiters=1e7, isoutofdomain=(u,p,t)->any(x->x<0.0, u[[1:6...,8:12...]]));
-convergence_plot(sol_ode, pulse_period)
+isoutofdomain=(u,p,t)->any(x->x<0.0, u[[1:6...,8:12...]])
+
+prob = ODEProblem(ode!, ic, (0.0, pulse_period), params, abstol=1e-12, reltol=1e-10)
+
+function param_map(p)
+    par = params
+    par = @set par.g_Na = p[1] * params.g_Na
+    par = @set par.g_Nab = p[2] * params.g_Nab
+    par = @set par.g_Cab = p[3] * params.g_Cab
+    par = @set par.g_K1_max = p[4] * params.g_K1_max
+    par = @set par.g_Kp = p[5] * params.g_Kp
+    par = @set par.g_K_max = p[6] * params.g_K_max
+    return par
+end
+
+function lcerror(ic, p)
+    prob_de = remake(prob, p=param_map(p))
+    prob_de = remake(prob_de, u0=ic)
+    sol = solve(prob_de, Rodas5(), tstops=tstops(pulse_period), maxiters=1e7, isoutofdomain=isoutofdomain, save_everystep=false, save_start=false, save_end=true)
+    error = maximum(abs.(sol[end] - ic)./ic)
+    return error
+end
+
+function getlc_standard(p)
+    condition(_, t, _) = t%pulse_period == 0
+    STATE::Vector{Float64} = zeros(size(Model.ic))
+    function affect!(integrator)
+        error = STATE .- integrator.u
+        if sum(abs.(error)) < 1e-6
+            terminate!(integrator)
+        end
+        STATE .= integrator.u
+    end
+    cb = ContinuousCallback(condition, affect!, nothing;
+        save_positions=(false, false))
+    prob_de = remake(prob, p=param_map(p))
+    sol = DifferentialEquations.solve(prob_de, Tsit5(), tspan=(0,100000.0), maxiters=1e9, save_everystep=false, save_start=false, save_end=true, callback=cb)
+    if sol.t[end]==100000
+        raise("maximum time reached without converence")
+    end
+    return sol.u[end]
+end
+
+function getlc_tracking(p, ic)
+    condition(_, t, _) = t%pulse_period == 0
+    STATE::Vector{Float64} = zeros(size(Model.ic))
+    function affect!(integrator)
+        error = STATE .- integrator.u
+        if sum(abs.(error)) < 1e-6
+            terminate!(integrator)
+        end
+        STATE .= integrator.u
+    end
+    cb = ContinuousCallback(condition, affect!, nothing;
+        save_positions=(false, false))
+    prob_de = remake(prob, p=param_map(p))
+    prob_de = remake(prob_de, u0=ic)
+    sol = DifferentialEquations.solve(prob_de, Tsit5(), tspan=(0,100000.0), maxiters=1e9, u0=Model.ic_conv, save_everystep=false, save_start=false, save_end=true, callback=cb)
+    if sol.t[end]==100000
+        raise("maximum time reached without converence")
+    end
+    return sol.u[end]
+end
+
+
+
+#prob_ode = ODEProblem(ode!, ic, (0.0, maxt), params, abstol=1e-12, reltol=1e-10)
+#sol_ode = solve(prob_ode, Rodas5(), tstops=tstops(maxt), maxiters=1e7, isoutofdomain=isoutofdomain);
+
+plot_idx = id_V
+slow_idx = [8,9,12]
+end
+
+using .LR
+using DifferentialEquations
+using Plots
+
+#prob = ODEProblem(ode!, ic, (0.0, 10000.0), params, abstol=1e-12, reltol=1e-10)
+#sol = solve(prob, Rodas5(), tstops=tstops(10000.0), maxiters=1e7, isoutofdomain=isoutofdomain)
+
+@show LR.lcerror(ic, [1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+@show LR.lcerror(ic_conv, [1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
