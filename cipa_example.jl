@@ -9,7 +9,7 @@ using .Cipa
 
 prob = Cipa.prob
 sol = solve(prob, Tsit5(); Cipa.solversettings(save=true, maxt=1000.0)...)
-display(plot(sol, idxs=49))
+display(plot(sol, idxs=Cipa.id_V))
 
 function convergence_plot(sol, dt=1000)
     # Plot the change in the states across each pulse
@@ -31,6 +31,6 @@ convergence_plot(sol)
 sol = solve(prob, Tsit5(); Cipa.solversettings(save=false, maxt=2000000.0)...)
 
 
-@show lcerror(sol[end], [1.0, 1.0, 1.0, 1.0])
-@show lcerror(ic, [1.0, 1.0, 1.0, 1.0])
-@show lcerror(ic_conv, [1.0, 1.0, 1.0, 1.0])
+@show Cipa.lcerror(sol[end], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+@show Cipa.lcerror(ic, [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+@show Cipa.lcerror(ic_conv, [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
