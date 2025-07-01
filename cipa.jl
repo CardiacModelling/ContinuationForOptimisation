@@ -56,8 +56,6 @@ function param_map!(prob, params)
     return nothing
 end
 
-#TODO Param_map now mutates, want to make sure this doesnt break anything
-
 function lcerror(ic, p)
     param_map!(prob, p)
     prob_de = remake(prob, u0=ic)
@@ -120,6 +118,7 @@ function findlc(startlc, p, debug)
     x0 = copy(startlc)
     error, dx = lcerror_withdx(x0, p)
     i = 0
+    failedCounter = 0
     while error > 1e-6
         improving = true
         k = 1
@@ -133,6 +132,7 @@ function findlc(startlc, p, debug)
                 error = errorp
                 dx = dxp
                 k *= 2
+                failedCounter = 0
             else
                 improving = false
             end
@@ -143,9 +143,13 @@ function findlc(startlc, p, debug)
             end
         end
         if improving == false && k == 1
-            # If we are not improving and k == 1, we are stuck
-            debug && println("Not improving, stopping.")
-            return nothing
+            failedCounter += 1
+            debug && println("Failed to improve after $failedCounter attempts, taking the step anyway and trying again.")
+            if failedCounter > 10
+                debug && println("Failed to improve after 10 attempts, stopping.")
+                return nothing
+            end
+            x0 = x0 .+ dx
         end
     end
     return x0
