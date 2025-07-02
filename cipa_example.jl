@@ -25,12 +25,11 @@ function convergence_plot(sol, dt=1000)
     display(ylabel!("Error"))
 end
 
-sol = solve(prob, Tsit5(); saveat=1000.0, save_everystep=false, Cipa.solversettings(save=true, maxt=500000.0)...)
+sol = solve(prob, Tsit5(); saveat=1000.0, save_everystep=false, Cipa.solversettings(save=true, maxt=500000.0)...) # save=true doesn't set any saving options, so we can set them manually
 convergence_plot(sol)
 
 sol = solve(prob, Tsit5(); Cipa.solversettings(save=false, maxt=2000000.0)...)
 
-
-@show Cipa.lcerror(sol[end], [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
-@show Cipa.lcerror(ic, [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
-@show Cipa.lcerror(ic_conv, [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+@show Cipa.lcerror(sol[end], ones(13))
+@show Cipa.lcerror(ic, ones(13))
+@show Cipa.lcerror(ic_conv, ones(13))

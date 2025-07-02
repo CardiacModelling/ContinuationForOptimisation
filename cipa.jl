@@ -47,11 +47,13 @@ function solversettings(; save=true, maxt=1000.0)
 end
 
 setter! = setp(getsys(ml), [:IKb₊GKb_b, :INa₊GNa, :IKr₊GKr_b, :IK1₊GK1_b, :INaCa_i₊Gncx_b,
-                                :INaL₊GNaL_b, :IKs₊GKs_b, :IpCa₊GpCa, :Ito₊Gto_b])
+                            :INaL₊GNaL_b, :IKs₊GKs_b, :IpCa₊GpCa, :Ito₊Gto_b, :ICaL₊PCa_b,
+                            :INaK₊Pnak_b, :INab₊PNab, :ICab₊PCab])
 
 function param_map!(prob, params)
     defaultParams = [0.003, 75.0, 0.04658545454545456, 0.3239783999999998, 0.0008,
-                     0.019957499999999975, 0.006358000000000001, 0.0005, 0.02]
+                     0.019957499999999975, 0.006358000000000001, 0.0005, 0.02, 0.0001007,
+                     30.0, 3.75e-10, 2.5e-8]
     setter!(prob, defaultParams .* params)
     return nothing
 end
