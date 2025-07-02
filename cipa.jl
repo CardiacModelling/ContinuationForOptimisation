@@ -119,6 +119,7 @@ function findlc(startlc, p, debug)
     error, dx = lcerror_withdx(x0, p)
     i = 0
     failedCounter = 0
+    local dxp
     while error > 1e-6
         improving = true
         k = 1
@@ -149,7 +150,7 @@ function findlc(startlc, p, debug)
                 debug && println("Failed to improve after 10 attempts, stopping.")
                 return nothing
             end
-            x0 = x0 .+ dx
+            x0 = x0 .+ dxp
         end
     end
     return x0
