@@ -127,6 +127,7 @@ function findlc(startlc, p, debug)
             xp = x0 .+ dx .* k
             errorp, dxp = lcerror_withdx(xp, p)
             i += 1
+            debug && println("Iteration: $i, Error: $error, Proposed Error: $errorp, Improved: $(errorp < error), k: $k")
             if errorp < error
                 x0 = xp
                 error = errorp
@@ -136,7 +137,6 @@ function findlc(startlc, p, debug)
             else
                 improving = false
             end
-            debug && println("Iteration: $i, Error: $error, Proposed Error: $errorp, Improved: $improving, k: $(improving ? k/2 : k)")
             if i > 500
                 debug && println("Too many iterations, stopping.")
                 return nothing
