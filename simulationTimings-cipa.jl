@@ -38,6 +38,8 @@ for i in eachindex(params)
     @show sol.u[end]
 end
 
+flush(stdout)
+
 println("Running standard approach benchmark")
 Random.seed!(0)
 b = @benchmarkable DifferentialEquations.solve(prob, $Tsit5(); callback=$cb, $Cipa.solversettings(save=false, maxt=2e6)...) setup = (param_map!(prob, 0.85 .+ rand(13)*0.3))
@@ -59,6 +61,8 @@ for i in eachindex(params)
     @show sol.u[end]
 end
 
+flush(stdout)
+
 println("Running tracking approach benchmark")
 Random.seed!(0)
 b = @benchmarkable DifferentialEquations.solve(prob, $Tsit5(); callback=$cb, $Cipa.solversettings(save=false, maxt=2e6)...) setup = (param_map!(prob, 0.85 .+ rand(13)*0.3))
@@ -76,6 +80,8 @@ for i in eachindex(params)
     params[i], debug)
     @show lc
 end
+
+flush(stdout)
 
 println("Running continuation approach benchmark")
 Random.seed!(0)
