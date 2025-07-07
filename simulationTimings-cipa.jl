@@ -43,7 +43,7 @@ flush(stdout)
 println("Running standard approach benchmark")
 Random.seed!(0)
 b = @benchmarkable DifferentialEquations.solve(prob, $Tsit5(); callback=$cb, $Cipa.solversettings(save=false, maxt=2e6)...) setup = (param_map!(prob, 0.85 .+ rand(13)*0.3))
-t = run(b, seconds=3600*6, samples=nParameters, evals=1)
+t = run(b, seconds=3600*15, samples=nParameters, evals=1)
 if length(t.times) != nParameters
     @show t
     throw("Not all parameters were run. $(length(t.times)) != $nParameters")
@@ -66,7 +66,7 @@ flush(stdout)
 println("Running tracking approach benchmark")
 Random.seed!(0)
 b = @benchmarkable DifferentialEquations.solve(prob, $Tsit5(); callback=$cb, $Cipa.solversettings(save=false, maxt=2e6)...) setup = (param_map!(prob, 0.85 .+ rand(13)*0.3))
-t = run(b, seconds=3600*6, samples=nParameters, evals=1)
+t = run(b, seconds=3600*15, samples=nParameters, evals=1)
 if length(t.times) != nParameters
     @show t
     throw("Not all parameters were run. $(length(t.times)) != $nParameters")
@@ -87,7 +87,7 @@ println("Running continuation approach benchmark")
 Random.seed!(0)
 b = @benchmarkable Cipa.continuation($Cipa.ic_conv, $ones(13),
     p, false) setup = (p = 0.85 .+ rand(13)*0.3)
-t = run(b, seconds=3600*6, samples=nParameters, evals=1)
+t = run(b, seconds=3600*15, samples=nParameters, evals=1)
 if length(t.times) != nParameters
     @show t
     throw("Not all parameters were run. $(length(t.times)) != $nParameters")
