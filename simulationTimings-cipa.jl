@@ -34,7 +34,7 @@ for i in eachindex(params)
     prob_de = prob
     param_map!(prob_de, params[i])
     sol = DifferentialEquations.solve(prob_de, Tsit5(); callback=cb, Cipa.solversettings(save=false, maxt=2e6)...)
-    display(sol.t)
+    @show sol.t
     @show sol.u[end]
 end
 
@@ -57,7 +57,7 @@ for i in eachindex(params)
     prob_de = remake(prob, u0=ic_conv)
     param_map!(prob_de, params[i])
     sol = DifferentialEquations.solve(prob_de, Tsit5(); callback=cb, Cipa.solversettings(save=false, maxt=2e6)...)
-    display(sol.t)
+    @show sol.t
     @show sol.u[end]
 end
 
