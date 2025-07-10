@@ -100,3 +100,16 @@ plot_ = plotter(plots[2:3:end], "Log Likelihood")
 savefig("results/mcmc/logLikelihood.pdf")
 plot_ = plotter(plots[3:3:end], "Normalized Parameters")
 savefig("results/mcmc/convergence.pdf")
+
+# Cipa - Simulation timings
+tStandard = BenchmarkTools.load("results/cipa/simTimings/standard.json")[1]
+tTracking = BenchmarkTools.load("results/cipa/simTimings/tracking.json")[1]
+tCont = BenchmarkTools.load("results/cipa/simTimings/continuation.json")[1]
+
+plot(tStandard, st=:box, yaxis=:log10, dpi=300, size=(450, 300), linecolor=:match,
+    markerstrokewidth=0, title="CiPA Limit Cycle Convergence Times", label="Standard", whisker_range=0)
+plot!(tTracking, st=:box, linecolor=:match, markerstrokewidth=0, label = "Tracking", whisker_range=0)
+plot!(tCont, st=:box, yaxis=:log10, legend=:bottomleft, xaxis=nothing, linecolor=:match,
+    markerstrokewidth=0, ylabel="Time (s)", yformatter=x -> x / 1e9, label = "Continuation", ylim=(1e10, 1e12), whisker_range=0)
+yaxis!(minorgrid=true)
+savefig("results/cipa/simTimings/simTimings.pdf")
