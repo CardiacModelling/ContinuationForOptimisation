@@ -65,7 +65,8 @@ flush(stdout)
 
 println("Running tracking approach benchmark")
 Random.seed!(0)
-b = @benchmarkable DifferentialEquations.solve(prob, $Tsit5(); callback=$cb, $Cipa.solversettings(save=false, maxt=2e6)...) setup = (param_map!(prob, 0.85 .+ rand(13)*0.3))
+prob_de = remake(prob, u0=Cipa.ic_conv)
+b = @benchmarkable DifferentialEquations.solve(prob_de, $Tsit5(); callback=$cb, $Cipa.solversettings(save=false, maxt=2e6)...) setup = (param_map!(prob_de, 0.85 .+ rand(13)*0.3))
 t = run(b, seconds=3600*15, samples=nParameters, evals=1)
 if length(t.times) != nParameters
     @show t
