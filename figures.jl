@@ -6,20 +6,24 @@ using CSV, DataFrames
 t = BenchmarkTools.load("results/simTimings/data.json")[1]
 l = @layout [a b]
 
-plot(t["Small"]["ODE"], st=:box, yaxis=:log10, dpi=300, size=(450,300), linecolor=:match,
+plot(t["Small"]["ODE"]["ODE - Standard"], label = "ODE - Standard", st=:box, yaxis=:log10, dpi=300, size=(450,300), linecolor=:match,
 markerstrokewidth=0, title="Small Perturbation", whisker_range=0)
+plot!(t["Small"]["ODE"]["ODE - Tracking"], label = "ODE - Tracking", st=:box, yaxis=:log10, linecolor=:match,
+    markerstrokewidth=0, whisker_range=0)
 plot!(t["Small"]["Cont"], st=:box, yaxis=:log10, legend=:bottomleft, xaxis=nothing, linecolor=:match,
 markerstrokewidth=0, ylabel="Time (s)", yformatter=x->x/1e9, ylim=(0.05e9, 1e9), whisker_range=0)
 plotA = yaxis!(minorgrid=true)
-plot(t["Large"]["ODE"], st=:box, yaxis=:log10, dpi=300, size=(450,300), title="Large Perturbation",
+plot(t["Large"]["ODE"]["ODE - Standard"], st=:box, yaxis=:log10, dpi=300, size=(450,300), title="Large Perturbation",
 linecolor=:match, markerstrokewidth=0, whisker_range=0)
+plot!(t["Large"]["ODE"]["ODE - Tracking"], st=:box, yaxis=:log10, linecolor=:match,
+    markerstrokewidth=0, whisker_range=0)
 plot!(t["Large"]["Cont"], st=:box, yaxis=:log10, legend=nothing, xaxis=nothing, linecolor=:match, markerstrokewidth=0,
 ylabel="", yformatter=x->x/1e9, ylim=(0.05e9, 1e9), whisker_range=0)
 plotB = yaxis!(minorgrid=true)
 
 plot(plotA, plotB, layout=l, size=(539,200), dpi=300, margin=5Plots.mm, link=:y)
-annotate!(-1, 1.75e9, text("A", 12, :black), subplot=1)
-annotate!(-1, 1.75e9, text("B", 12, :black), subplot=2)
+annotate!(-0.7, 1.75e9, text("A", 12, :black), subplot=1)
+annotate!(-0.7, 1.75e9, text("B", 12, :black), subplot=2)
 savefig("results/simTimings/simTimings.pdf")
 
 # MCMC
