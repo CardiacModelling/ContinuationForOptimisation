@@ -95,6 +95,7 @@ for file_type in file_types
     end
     xaxis!(p, xticks=([0.92, 0.96, 1.00, 1.04], ["0.92", "0.96", "1.00", "1.04"]), subplot=15)
     xaxis!(p, xticks=([1.8, 2.0, 2.2], ["1.8", "2.0", "2.2"]), subplot=16)
+    yaxis!(p, ylabel="", subplot=1)
 
     for col in 3:4
         for row in 1:col-1
