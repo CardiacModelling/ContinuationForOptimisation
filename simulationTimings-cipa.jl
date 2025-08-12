@@ -24,7 +24,7 @@ cb = PeriodicCallback(affect!, Cipa.pulse_period, save_positions=(false, false))
 
 # Parameters
 Random.seed!(0)
-params = [0.85 .+ rand(13) * 0.3 for _ in 1:nParameters]
+params = [0.85 .+ rand(14) * 0.3 for _ in 1:nParameters]
 @show params
 
 # ODE Convergence - Standard
@@ -42,7 +42,7 @@ flush(stdout)
 
 println("Running standard approach benchmark")
 Random.seed!(0)
-b = @benchmarkable DifferentialEquations.solve(prob, $Tsit5(); callback=$cb, $Cipa.solversettings(save=false, maxt=2e6)...) setup = (param_map!(prob, 0.85 .+ rand(13)*0.3))
+b = @benchmarkable DifferentialEquations.solve(prob, $Tsit5(); callback=$cb, $Cipa.solversettings(save=false, maxt=2e6)...) setup = (param_map!(prob, 0.85 .+ rand(14)*0.3))
 t = run(b, seconds=3600*15, samples=nParameters, evals=1)
 if length(t.times) != nParameters
     @show t
@@ -66,7 +66,7 @@ flush(stdout)
 println("Running tracking approach benchmark")
 Random.seed!(0)
 prob_de = remake(prob, u0=Cipa.ic_conv)
-b = @benchmarkable DifferentialEquations.solve(prob_de, $Tsit5(); callback=$cb, $Cipa.solversettings(save=false, maxt=2e6)...) setup = (param_map!(prob_de, 0.85 .+ rand(13)*0.3))
+b = @benchmarkable DifferentialEquations.solve(prob_de, $Tsit5(); callback=$cb, $Cipa.solversettings(save=false, maxt=2e6)...) setup = (param_map!(prob_de, 0.85 .+ rand(14)*0.3))
 t = run(b, seconds=3600*15, samples=nParameters, evals=1)
 if length(t.times) != nParameters
     @show t
@@ -77,7 +77,7 @@ BenchmarkTools.save("results/cipa/simTimings/tracking.json", t)
 for i in eachindex(params)
     println("Continuation Approach")
     println("Continuation for parameter vector $i")
-    lc = Cipa.continuation(Cipa.ic_conv, ones(13),
+    lc = Cipa.continuation(Cipa.ic_conv, ones(14),
     params[i], debug)
     @show lc
 end
@@ -86,8 +86,8 @@ flush(stdout)
 
 println("Running continuation approach benchmark")
 Random.seed!(0)
-b = @benchmarkable Cipa.continuation($Cipa.ic_conv, $ones(13),
-    p, false) setup = (p = 0.85 .+ rand(13)*0.3)
+b = @benchmarkable Cipa.continuation($Cipa.ic_conv, $ones(14),
+    p, false) setup = (p = 0.85 .+ rand(14)*0.3)
 t = run(b, seconds=3600*15, samples=nParameters, evals=1)
 if length(t.times) != nParameters
     @show t

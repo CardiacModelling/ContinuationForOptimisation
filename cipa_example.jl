@@ -30,6 +30,6 @@ convergence_plot(sol)
 
 sol = solve(prob, Tsit5(); Cipa.solversettings(save=false, maxt=2000000.0)...)
 
-@show Cipa.lcerror(sol[end], ones(13))
-@show Cipa.lcerror(ic, ones(13))
-@show Cipa.lcerror(ic_conv, ones(13))
+@show Cipa.lcerror(sol[end], ones(14))
+@show Cipa.lcerror(ic, ones(14))
+@show Cipa.lcerror(ic_conv, ones(14))
