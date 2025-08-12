@@ -7,7 +7,7 @@ using .Cipa
 
 prob = Cipa.prob
 
-const debug = true
+const debug = false
 const nParameters = 100 # How many parameter vectors to use for the benchmark
 
 # Setup
