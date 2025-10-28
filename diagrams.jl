@@ -198,7 +198,7 @@ z0 = [-87.0, 0.01, 0.8, 0.01]
 prob_de = ODEProblem(noble!, z0, (0.0, 500.0), params, reltol=1e-8, abstol=1e-10)
 sol = Tools.aligned_sol(z0, prob_de, period; save_only_V=false)
 # Shift back in time for plotting because starting at V=-20mV doesn't look nice, manually aligned with other AP
-u0 = sol(0.4475)
+u0 = sol(0.564)
 prob_de = remake(prob_de, u0=u0)
 sol = DifferentialEquations.solve(prob_de, Tsit5(), tspan=(0.0, period), maxiters=1e9)
 p1 = plot!(sol, idxs=1, label="Without Ions", xlabel="Time (ms)",
