@@ -1,11 +1,7 @@
 using Plots, LaTeXStrings, Distributions
 using CellMLToolkit, DifferentialEquations, ModelingToolkit, SymbolicIndexingInterface
 
-include("./tools.jl")
-using .Tools
-
-include("./model.jl")
-using .Model
+include("./mcmcSetup.jl")
 
 plotParams = (linewidth=2., dpi=300)
 l = @layout [a b]
@@ -158,3 +154,98 @@ ylabel!("Voltage (mV)")
 title!("Variation in APs")
 plot!(size=(539,300), dpi=300, rightmargin=2Plots.mm, bottommargin=-8Plots.mm)
 savefig("results/diagrams/limitCycles.pdf")
+
+# Noble model concentration changes
+prob_de = ODEProblem(Model.ode!, Model.ic_conv, (0.,10.0), params, reltol=1e-8, abstol=1e-10)
+sol = Tools.aligned_sol(Model.ic_conv, prob_de, period; save_only_V=false)
+# Shift back in time for plotting because starting at V=-20mV doesn't look nice
+u0 = sol(0.4)
+prob_de = remake(prob_de, u0=u0)
+sol = DifferentialEquations.solve(prob_de, Tsit5(), tspan=(0.0, period), maxiters=1e9)
+plot(sol, idxs=1, label="With Ions"; plotParams...)
+
+# Do the same with the non-concentration model
+
+function noble!(dz, z, p, t=0)
+    @unpack g_Na_sf, g_K_sf, g_L_sf = p
+
+    V, m, h, n = z
+
+    alpha_m = 100 * (-V - 48) / (exp((-V - 48) / 15) - 1)
+    beta_m = 120 * (V + 8) / (exp((V + 8) / 5) - 1)
+    alpha_h = 170 * exp((-V - 90) / 20)
+    beta_h = 1000 / (1 + exp((-V - 42) / 10))
+    alpha_n = 0.1 * (-V - 50) / (exp((-V - 50) / 10) - 1)
+    beta_n = 2 * exp((-V - 90) / 80)
+
+    g_Na = g_Na_sf * m^3 * h * 400000
+    g_K1 = g_K_sf * 1200 * exp((-V - 90) / 50) + 15 * exp((V + 90) / 60)
+    g_K2 = g_K_sf * 1200 * n^4
+
+    i_Leak = g_L_sf * 75 * (V + 60)
+    i_Na = (g_Na + 140) * (V - 40)
+    i_K = (g_K1 + g_K2) * (V + 100)
+
+    dz[1] = -(i_Na + i_K + i_Leak) / 12
+    dz[2] = alpha_m * (1 - m) - beta_m * m
+    dz[3] = alpha_h * (1 - h) - beta_h * h
+    dz[4] = alpha_n * (1 - n) - beta_n * n
+
+    dz
+end
+
+z0 = [-87.0, 0.01, 0.8, 0.01]
+prob_de = ODEProblem(noble!, z0, (0.0, 500.0), params, reltol=1e-8, abstol=1e-10)
+sol = Tools.aligned_sol(z0, prob_de, period; save_only_V=false)
+# Shift back in time for plotting because starting at V=-20mV doesn't look nice, manually aligned with other AP
+u0 = sol(0.4475)
+prob_de = remake(prob_de, u0=u0)
+sol = DifferentialEquations.solve(prob_de, Tsit5(), tspan=(0.0, period), maxiters=1e9)
+p1 = plot!(sol, idxs=1, label="Without Ions", xlabel="Time (ms)",
+xformatter=x -> x * 1000, ylabel = "Voltage (mV)"; plotParams...)
+
+# Second plot for concentrations
+prob_de = ODEProblem(Model.ode!, Model.ic_conv, (0., 10.0), params, reltol=1e-8, abstol=1e-10)
+sol = Tools.aligned_sol(Model.ic_conv, prob_de, period; save_only_V=false)
+# Shift back in time for plotting because starting at V=-20mV doesn't look nice
+u0 = sol(0.4)
+prob_de = remake(prob_de, u0=u0)
+sol = DifferentialEquations.solve(prob_de, Tsit5(), tspan=(0.0, period), maxiters=1e9)
+p2 = plot(sol, idxs=[5], label="Na", ylabel="Na Concentration", xlabel="Time (ms)",
+xformatter=x -> x * 1000, legend=false; plotParams...)
+p2t = twinx()
+plot!(p2t, sol, idxs=[6], label=nothing, xlabel="", ylabel="K Concentration", color=:red, legend=false; plotParams...)
+plot!(p2, [NaN], [NaN], label="K", color=:red; plotParams...)
+plot!(p2, legend=:best)
+
+# Plot of voltage before and after convergence
+prob_de = ODEProblem(Model.ode!, Model.ic, (0., 10.0), params, reltol=1e-8, abstol=1e-10)
+sol = Tools.aligned_sol(Model.ic, prob_de, period; save_only_V=false)
+u0 = sol(0.5)
+prob_de = remake(prob_de, u0=u0)
+sol = DifferentialEquations.solve(prob_de, Tsit5(), tspan=(0.0, period), maxiters=1e9)
+plot(sol, idxs=1, label="Unconverged"; plotParams...)
+prob_de = ODEProblem(Model.ode!, Model.ic, (0., 200.0), params, reltol=1e-8, abstol=1e-10)
+sol = DifferentialEquations.solve(prob_de, Tsit5(), maxiters=1e9)
+sol = Tools.aligned_sol(sol[end], prob_de, period; save_only_V=false)
+u0 = sol(0.3475)
+prob_de = remake(prob_de, u0=u0)
+sol = DifferentialEquations.solve(prob_de, Tsit5(), tspan=(0.0, period), maxiters=1e9)
+p3 = plot!(sol, idxs=1, label="Converged", xlabel="Time (ms)", xformatter=x -> x * 1000,
+ylabel="Voltage (mV)"; plotParams...)
+
+# Plot of concentrations during convergence
+prob_de = ODEProblem(Model.ode!, Model.ic, (0., 100.0), params, reltol=1e-8, abstol=1e-10)
+sol = DifferentialEquations.solve(prob_de, Tsit5(), maxiters=1e9)
+p4 = plot(sol, idxs=[5], label="Na", ylabel="Na Concentration", xlabel="Time (s)",
+legend=false; plotParams...)
+p4t = twinx()
+plot!(p4t, sol, idxs=[6], label=nothing, ylabel="K Concentration", xlabel="",
+color=:red, legend=false; plotParams...)
+plot!(p4, [NaN], [NaN], label="K", color=:red; plotParams...)
+plot!(p4, legend=:best)
+
+l_vertical = @layout [a c; b d]
+plot(p1, p2, p3, p4, layout=l_vertical, size=(700,600), title=["A" "B" "" "C" "D" ""],
+titlelocation=:left, dpi=300)
+savefig("results/diagrams/nobleConc.pdf")
