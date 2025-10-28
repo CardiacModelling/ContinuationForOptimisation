@@ -6,20 +6,24 @@ using CSV, DataFrames
 t = BenchmarkTools.load("results/simTimings/data.json")[1]
 l = @layout [a b]
 
-plot(t["Small"]["ODE"], st=:box, yaxis=:log10, dpi=300, size=(450,300), linecolor=:match, 
+plot(t["Small"]["ODE"]["ODE - Standard"], label = "ODE - Standard", st=:box, yaxis=:log10, dpi=300, size=(450,300), linecolor=:match,
 markerstrokewidth=0, title="Small Perturbation", whisker_range=0)
+plot!(t["Small"]["ODE"]["ODE - Tracking"], label = "ODE - Tracking", st=:box, yaxis=:log10, linecolor=:match,
+    markerstrokewidth=0, whisker_range=0)
 plot!(t["Small"]["Cont"], st=:box, yaxis=:log10, legend=:bottomleft, xaxis=nothing, linecolor=:match,
 markerstrokewidth=0, ylabel="Time (s)", yformatter=x->x/1e9, ylim=(0.05e9, 1e9), whisker_range=0)
 plotA = yaxis!(minorgrid=true)
-plot(t["Large"]["ODE"], st=:box, yaxis=:log10, dpi=300, size=(450,300), title="Large Perturbation", 
+plot(t["Large"]["ODE"]["ODE - Standard"], st=:box, yaxis=:log10, dpi=300, size=(450,300), title="Large Perturbation",
 linecolor=:match, markerstrokewidth=0, whisker_range=0)
+plot!(t["Large"]["ODE"]["ODE - Tracking"], st=:box, yaxis=:log10, linecolor=:match,
+    markerstrokewidth=0, whisker_range=0)
 plot!(t["Large"]["Cont"], st=:box, yaxis=:log10, legend=nothing, xaxis=nothing, linecolor=:match, markerstrokewidth=0,
 ylabel="", yformatter=x->x/1e9, ylim=(0.05e9, 1e9), whisker_range=0)
 plotB = yaxis!(minorgrid=true)
 
 plot(plotA, plotB, layout=l, size=(539,200), dpi=300, margin=5Plots.mm, link=:y)
-annotate!(-1, 1.75e9, text("A", 12, :black), subplot=1)
-annotate!(-1, 1.75e9, text("B", 12, :black), subplot=2)
+annotate!(-0.7, 1.75e9, text("A", 12, :black), subplot=1)
+annotate!(-0.7, 1.75e9, text("B", 12, :black), subplot=2)
 savefig("results/simTimings/simTimings.pdf")
 
 # MCMC
@@ -58,7 +62,7 @@ for file_type in file_types
     pTrueWithNoise = [1.0, 1.0, 1.0, 2.0]
     order = [4, 3, 1, 2]
     plot(chain[:,order]./pTrueWithNoise[order]', label="", xticks=([0,20000,40000],["0","2×10⁵","4×10⁵"]),
-    xlabel="Iteration", xlim=(0,numSamples); 
+    xlabel="Iteration", xlim=(0,numSamples);
     plot_params...)
     # Hodge podge of lines in the right order for the legend
     for i in 1:4
@@ -70,7 +74,6 @@ for file_type in file_types
 
     # Plot posterior histograms
     p = corrplot(posterior, label=paramNames, size=(539,500), xrot=90, fillcolor=:thermal)
-    plot!(p, subplot=16, xformatter=x->x)
     for i in 1:4
         for j in 1:4
             if i != j
@@ -78,6 +81,28 @@ for file_type in file_types
             end
             if i == j
                 vline!(p, [pTrueWithNoise[i]], subplot=(j-1)*4+i, label="", color=:red)
+            end
+        end
+    end
+    for (i, subplot) in enumerate([4,8,12])
+        yaxis!(p, yformatter=x -> x, subplot=subplot, ymirror=true, yaxisposition=:right, ylabel=paramNames[i])
+    end
+    for subplot in [2, 3, 7]
+        yaxis!(p, subplot=subplot, ymirror=true, yaxisposition=:right)
+    end
+    for subplot in [1,6,11,16]
+        yaxis!(p, yformatter=x -> x, subplot=subplot)
+    end
+    xaxis!(p, xticks=([0.92, 0.96, 1.00, 1.04], ["0.92", "0.96", "1.00", "1.04"]), subplot=15)
+    xaxis!(p, xticks=([1.8, 2.0, 2.2], ["1.8", "2.0", "2.2"]), subplot=16)
+    yaxis!(p, ylabel="", subplot=1)
+
+    for col in 3:4
+        for row in 1:col-1
+            if col == 3
+                xaxis!(p, xticks=([0.92, 0.96, 1.00, 1.04], []), subplot=(row-1)*4+col)
+            else
+                xaxis!(p, xticks=([1.8, 2.0, 2.2], []), subplot=(row-1)*4+col)
             end
         end
     end
@@ -100,3 +125,16 @@ plot_ = plotter(plots[2:3:end], "Log Likelihood")
 savefig("results/mcmc/logLikelihood.pdf")
 plot_ = plotter(plots[3:3:end], "Normalized Parameters")
 savefig("results/mcmc/convergence.pdf")
+
+# Cipa - Simulation timings
+tStandard = BenchmarkTools.load("results/cipa/simTimings/standard.json")[1]
+tTracking = BenchmarkTools.load("results/cipa/simTimings/tracking.json")[1]
+tCont = BenchmarkTools.load("results/cipa/simTimings/continuation.json")[1]
+
+plot(tStandard, st=:box, yaxis=:log10, dpi=300, size=(450, 300), linecolor=:match,
+    markerstrokewidth=0, title="CiPA Limit Cycle Convergence Times", label="Standard", whisker_range=0)
+plot!(tTracking, st=:box, linecolor=:match, markerstrokewidth=0, label = "Tracking", whisker_range=0)
+plot!(tCont, st=:box, yaxis=:log10, legend=:bottomleft, xaxis=nothing, linecolor=:match,
+    markerstrokewidth=0, ylabel="Time (s)", yformatter=x -> x / 1e9, label = "Continuation", ylim=(1e10, 1e12), whisker_range=0)
+yaxis!(minorgrid=true)
+savefig("results/cipa/simTimings/simTimings.pdf")

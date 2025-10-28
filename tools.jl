@@ -33,7 +33,7 @@ end
 """
     aligned_sol(lc, prob::ODEProblem, period::Number; save_only_V::Bool = true)
 
-Align the limit cycle in the solution to start at the max of V and fixes the timesteps for recording the data.
+Align the limit cycle in the solution to V=-20mV and fixes the timesteps for recording the data.
 
 # Arguments
 - `lc`: The limit cycle to align.
