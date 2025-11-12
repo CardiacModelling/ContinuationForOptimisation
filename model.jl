@@ -54,8 +54,8 @@ function ode!(dz, z, p, t=0)
 	dz[2] = alpha_m*(1-m)-beta_m*m
 	dz[3] = alpha_h*(1-h)-beta_h*h
 	dz[4] = alpha_n*(1-n)-beta_n*n
-	dz[5] = 2.5*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
-	dz[6] = 2.5*(-(i_K+i_Leak)/(1000*F) - (ki-ki_target)/20.0)
+	dz[5] = (1/0.4)*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
+	dz[6] = (1/0.4)*(-(i_K+i_Leak)/(1000*F) - (ki-ki_target)/20.0)
 
 	dz
 end
@@ -110,8 +110,8 @@ function ode_cont!(dz, z, p, t=0)
 	dz[2] = alpha_m*(1-m)-beta_m*m
 	dz[3] = alpha_h*(1-h)-beta_h*h
 	dz[4] = alpha_n*(1-n)-beta_n*n
-	dz[5] = 2.5*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
-	dz[6] = 2.5*(-(i_K+i_Leak)/(1000*F) - (ki-ki_target)/20.0)
+	dz[5] = (1/0.4)*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
+	dz[6] = (1/0.4)*(-(i_K+i_Leak)/(1000*F) - (ki-ki_target)/20.0)
 
 	dz
 end

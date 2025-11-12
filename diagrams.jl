@@ -122,27 +122,27 @@ savefig("results/diagrams/actionPotential.pdf")
 # Limit cycles
 plotTime = 1.0
 # Start - Tracking
-params = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, conv_rate=2.5)
+params = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, τ=0.4)
 prob_de = ODEProblem(Model.ode!, Model.ic, (0.,1000.0), params, reltol=1e-8, abstol=1e-10)
 sol = DifferentialEquations.solve(prob_de, Tsit5(), maxiters=1e7, saveat=10.0)
 sol = Tools.aligned_sol(sol[end], prob_de, plotTime)
 plot(sol, label="Start - Tracking", idxs=(1); plotParams...)
 
 # Start - Standard
-params = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, conv_rate=2.5)
+params = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, τ=0.4)
 prob_de = ODEProblem(Model.ode!, Model.ic, (0.,1000.0), params, reltol=1e-8, abstol=1e-10)
 sol = Tools.aligned_sol(Model.ic, prob_de, plotTime)
 plot!(sol, label="Start - Standard", idxs=(1); plotParams...)
 
 # End - Small perturbation
-params = (g_Na_sf=1.1, g_K_sf=1.0, g_L_sf=1.0, conv_rate=2.5)
+params = (g_Na_sf=1.1, g_K_sf=1.0, g_L_sf=1.0, τ=0.4)
 prob_de = ODEProblem(Model.ode!, Model.ic, (0.,1000.0), params, reltol=1e-8, abstol=1e-10)
 sol = DifferentialEquations.solve(prob_de, Tsit5(), maxiters=1e7, saveat=10.0)
 sol = Tools.aligned_sol(sol[end], prob_de, plotTime)
 plot!(sol, label="End - Small Perturbation", idxs=(1); plotParams...)
 
 # End - Large perturbation
-params = (g_Na_sf=1.5, g_K_sf=1.2, g_L_sf=0.8, conv_rate=2.5)
+params = (g_Na_sf=1.5, g_K_sf=1.2, g_L_sf=0.8, τ=0.4)
 prob_de = ODEProblem(Model.ode!, Model.ic, (0.,1000.0), params, reltol=1e-8, abstol=1e-10)
 sol = DifferentialEquations.solve(prob_de, Tsit5(), maxiters=1e7, saveat=10.0)
 sol = Tools.aligned_sol(sol[end], prob_de, plotTime)

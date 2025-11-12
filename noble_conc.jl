@@ -13,7 +13,7 @@ function noble_conc!(dz, z, p, t=0)
 	ko = 3.8
 
 	# Parameters
-	@unpack g_Na_sf, g_K_sf, g_L_sf, conv_rate = p
+	@unpack g_Na_sf, g_K_sf, g_L_sf, τ = p
 
     # States
 	V, m, h, n, nai, ki = z
@@ -54,20 +54,20 @@ function noble_conc!(dz, z, p, t=0)
 	dz[2] = alpha_m*(1-m)-beta_m*m
 	dz[3] = alpha_h*(1-h)-beta_h*h
 	dz[4] = alpha_n*(1-n)-beta_n*n
-	dz[5] = conv_rate*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
-	dz[6] = conv_rate*(-(i_K+i_Leak)/(1000*F) - (ki-ki_target)/20.0)
+	dz[5] = (1/τ)*(-(i_Na)/(1000*F) - (nai-nai_target)/20.0)
+	dz[6] = (1/τ)*(-(i_K+i_Leak)/(1000*F) - (ki-ki_target)/20.0)
 
 	dz
 end
 
 # parameter values
-params = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, conv_rate=1.0)
+params = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, τ=1.0)
 
 # initial condition
 z0 = [-87.0, 0.01, 0.8, 0.01, 30, 160]
 
 # tune the convergence rate
-params = @set params.conv_rate=2.5
+params = @set params.τ=0.4
 
 # Want to converge in close to 100 seconds
 prob_de = ODEProblem(noble_conc!, z0, (0.,200.0), params, reltol=1e-8, abstol=1e-10)
