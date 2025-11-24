@@ -156,6 +156,7 @@ plot!(size=(539,300), dpi=300, rightmargin=2Plots.mm, bottommargin=-8Plots.mm)
 savefig("results/diagrams/limitCycles.pdf")
 
 # Noble model concentration changes
+params = (g_Na_sf=1.0, g_K_sf=1.0, g_L_sf=1.0, τ=0.4)
 prob_de = ODEProblem(Model.ode!, Model.ic_conv, (0.,10.0), params, reltol=1e-8, abstol=1e-10)
 sol = Tools.aligned_sol(Model.ic_conv, prob_de, period; save_only_V=false)
 # Shift back in time for plotting because starting at V=-20mV doesn't look nice
