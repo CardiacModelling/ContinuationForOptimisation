@@ -12,7 +12,7 @@ To use the same package versions as used in the paper, refer to the *Project.tom
 Note the figures were generated under a different environment to the one given in the *Project.toml* and *Manifest.toml* files, which were only used to generated the results/data.
 
 # Running the analysis
-The analysis from the paper can be run by running the scripts *simulationTimings.jl*, *mcmcSetup.jl* and *mhmcmc.jl*.
+The analysis from the paper can be run by running the scripts *simulationTimings.jl*, *mcmcSetup.jl*, *mhmcmc.jl*, and *simulationTimings-cipa.jl*.
 
 Note that running the scripts will override the previously recorded results.
 
