@@ -94,7 +94,7 @@ plot!(x, y, label="Standard", color=:red, arrow=true, legend=:bottomright; plotP
 # Initial Condition
 plotB = hline!([initialCondition], label="IC", color=:pink; plotParams...)
 
-plot(plotA, plotB, layout=l, size=(539,250), dpi=300, left_margin=4Plots.mm, 
+plot(plotA, plotB, layout=l, size=(539,250), dpi=300, left_margin=4Plots.mm,
 title=["A" "B"], titlelocation=:left)
 savefig("results/diagrams/possibleProblems.pdf")
 
@@ -217,7 +217,7 @@ xformatter=x -> x * 1000, legend=false; plotParams...)
 p2t = twinx()
 plot!(p2t, sol, idxs=[6], label=nothing, xlabel="", ylabel="K Concentration", color=:red, legend=false; plotParams...)
 plot!(p2, [NaN], [NaN], label="K", color=:red; plotParams...)
-plot!(p2, legend=:best)
+plot!(p2, legend=:topright)
 
 # Plot of voltage before and after convergence
 prob_de = ODEProblem(Model.ode!, Model.ic, (0., 10.0), params, reltol=1e-8, abstol=1e-10)
@@ -247,6 +247,6 @@ plot!(p4, [NaN], [NaN], label="K", color=:red; plotParams...)
 plot!(p4, legend=:best)
 
 l_vertical = @layout [a c; b d]
-plot(p1, p2, p3, p4, layout=l_vertical, size=(700,600), title=["A" "B" "" "C" "D" ""],
+plot(p1, p2, p3, p4, layout=l_vertical, size=(539,500), title=["A" "B" "" "C" "D" ""],
 titlelocation=:left, dpi=300)
 savefig("results/diagrams/nobleConc.pdf")

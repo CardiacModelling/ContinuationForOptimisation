@@ -6,24 +6,26 @@ using CSV, DataFrames
 t = BenchmarkTools.load("results/simTimings/data.json")[1]
 l = @layout [a b]
 
-plot(t["Small"]["ODE"]["ODE - Standard"], label = "ODE - Standard", st=:box, yaxis=:log10, dpi=300, size=(450,300), linecolor=:match,
+plot(t["Small"]["ODE"]["ODE - Standard"], label = nothing, st=:box, dpi=300, size=(397,250), linecolor=:match,
 markerstrokewidth=0, title="Small Perturbation", whisker_range=0)
-plot!(t["Small"]["ODE"]["ODE - Tracking"], label = "ODE - Tracking", st=:box, yaxis=:log10, linecolor=:match,
+plot!(t["Small"]["ODE"]["ODE - Tracking"], label = nothing, st=:box, linecolor=:match,
     markerstrokewidth=0, whisker_range=0)
-plot!(t["Small"]["Cont"], st=:box, yaxis=:log10, legend=:bottomleft, xaxis=nothing, linecolor=:match,
-markerstrokewidth=0, ylabel="Time (s)", yformatter=x->x/1e9, ylim=(0.05e9, 1e9), whisker_range=0)
+plot!(t["Small"]["Cont"]["Cont - Shooting"], st=:box, xaxis=nothing, linecolor=:match,
+markerstrokewidth=0, ylabel="Time (s)", yformatter=x->x/1e9, ylim=(0, 0.75e9), whisker_range=0)
+xaxis!(xticks=([1, 2, 3], ["Standard", "Tracking", "Continuation"]), xminorticks=false)
 plotA = yaxis!(minorgrid=true)
-plot(t["Large"]["ODE"]["ODE - Standard"], st=:box, yaxis=:log10, dpi=300, size=(450,300), title="Large Perturbation",
+plot(t["Large"]["ODE"]["ODE - Standard"], st=:box, dpi=300, size=(397,300), title="Large Perturbation",
 linecolor=:match, markerstrokewidth=0, whisker_range=0)
-plot!(t["Large"]["ODE"]["ODE - Tracking"], st=:box, yaxis=:log10, linecolor=:match,
+plot!(t["Large"]["ODE"]["ODE - Tracking"], st=:box, linecolor=:match,
     markerstrokewidth=0, whisker_range=0)
-plot!(t["Large"]["Cont"], st=:box, yaxis=:log10, legend=nothing, xaxis=nothing, linecolor=:match, markerstrokewidth=0,
-ylabel="", yformatter=x->x/1e9, ylim=(0.05e9, 1e9), whisker_range=0)
+plot!(t["Large"]["Cont"]["Cont - Shooting"], st=:box, legend=nothing, xaxis=nothing, linecolor=:match, markerstrokewidth=0,
+ylabel="", yformatter=x->x/1e9, ylim=(0, 0.75e9), whisker_range=0)
+xaxis!(xticks=([1, 2, 3], ["Standard", "Tracking", "Continuation"]), xminorticks=false)
 plotB = yaxis!(minorgrid=true)
 
-plot(plotA, plotB, layout=l, size=(539,200), dpi=300, margin=5Plots.mm, link=:y)
-annotate!(-0.7, 1.75e9, text("A", 12, :black), subplot=1)
-annotate!(-0.7, 1.75e9, text("B", 12, :black), subplot=2)
+plot(plotA, plotB, layout=l, size=(539,250), dpi=300, margins=2Plots.mm)
+annotate!(0, 0.8e9, text("A", 12, :black), subplot=1)
+annotate!(0, 0.8e9, text("B", 12, :black), subplot=2)
 savefig("results/simTimings/simTimings.pdf")
 
 # MCMC
@@ -131,10 +133,11 @@ tStandard = BenchmarkTools.load("results/cipa/simTimings/standard.json")[1]
 tTracking = BenchmarkTools.load("results/cipa/simTimings/tracking.json")[1]
 tCont = BenchmarkTools.load("results/cipa/simTimings/continuation.json")[1]
 
-plot(tStandard, st=:box, yaxis=:log10, dpi=300, size=(450, 300), linecolor=:match,
-    markerstrokewidth=0, title="CiPA Limit Cycle Convergence Times", label="Standard", whisker_range=0)
-plot!(tTracking, st=:box, linecolor=:match, markerstrokewidth=0, label = "Tracking", whisker_range=0)
-plot!(tCont, st=:box, yaxis=:log10, legend=:bottomleft, xaxis=nothing, linecolor=:match,
-    markerstrokewidth=0, ylabel="Time (s)", yformatter=x -> x / 1e9, label = "Continuation", ylim=(1e10, 1e12), whisker_range=0)
+plot(tStandard, st=:box, dpi=300, size=(397, 300), linecolor=:match,
+    markerstrokewidth=0, title="CiPA Convergence Times", label=nothing, whisker_range=0)
+plot!(tTracking, st=:box, linecolor=:match, markerstrokewidth=0, label = nothing, whisker_range=0)
+plot!(tCont, st=:box, legend=:bottomleft, xaxis=nothing, linecolor=:match,
+    markerstrokewidth=0, ylabel="Time (s)", yformatter=x -> x / 1e9, label = nothing, ylim=(0, 0.75e12), whisker_range=0)
 yaxis!(minorgrid=true)
+xaxis!(xticks=([1,2,3], ["Standard", "Tracking", "Continuation"]), xminorticks=false)
 savefig("results/cipa/simTimings/simTimings.pdf")
