@@ -29,14 +29,14 @@ function get_period(lc::Vector{Float64}, prob::ODEProblem)::Number
     condition(u, _, _) = u[1]+20
     NUM_TIMES_EFFECT_HIT::Int = 0
     function affect!(integrator)
-        NUM_TIMES_EFFECT_HIT += 1 
+        NUM_TIMES_EFFECT_HIT += 1
         if NUM_TIMES_EFFECT_HIT >= 2
             terminate!(integrator)
         end
     end
     cb = ContinuousCallback(condition, affect!, nothing;
     save_positions = (true, false))
-    sol = DifferentialEquations.solve(prob, Tsit5(), u0=lc, tspan=(0.0, 10.0), maxiters=1e9, 
+    sol = DifferentialEquations.solve(prob, Tsit5(), u0=lc, tspan=(0.0, 10.0), maxiters=1e9,
     save_everystep=false, save_start=false, save_end=false, callback=cb)
     period = sol.t[end]-sol.t[1]
     return period
@@ -134,6 +134,6 @@ end
 
 sol_pulse, odedata, period = saveData()
 
-res = optimiseParameters()
+#res = optimiseParameters()
 
-solMLE = plotData(sol_pulse, odedata, res.minimizer, period)
+#solMLE = plotData(sol_pulse, odedata, res.minimizer, period)
